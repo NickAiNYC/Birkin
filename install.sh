@@ -43,7 +43,7 @@ NC='\033[0m' # No Color
 SERVER_TYPE="${SERVER_TYPE:-cx22}"
 SERVER_LOCATION="${SERVER_LOCATION:-nbg1}"
 SSH_KEY_NAME="${SSH_KEY_NAME:-birkin}"
-AGEMES_REPO="https://github.com/NickAiNYC/birkin.git"
+BIRKIN_REPO="https://github.com/NickAiNYC/birkin.git"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 log_step() {
@@ -81,7 +81,7 @@ prompt_if_empty() {
 # ─── Banner ───────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║          AGEMES — One-Command Installer v1.0.0               ║${NC}"
+echo -e "${BOLD}║          BIRKIN — One-Command Installer v1.0.0               ║${NC}"
 echo -e "${BOLD}║     A Self-Governing Hermes Agent · €13/mo · Open Source     ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -205,7 +205,7 @@ set -euo pipefail
 
 # Clone repo if not already there
 if [ ! -d /opt/birkin ]; then
-    git clone ${AGEMES_REPO} /opt/birkin
+    git clone ${BIRKIN_REPO} /opt/birkin
     echo "✅ Repo cloned to /opt/birkin"
 else
     cd /opt/birkin && git pull --ff-only
@@ -266,7 +266,7 @@ log_step "Phase 7/7 — Done!"
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║                    🎉 AGEMES IS LIVE                        ║${NC}"
+echo -e "${BOLD}║                    🎉 BIRKIN IS LIVE                        ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  Agent URL:    ${CYAN}${BOLD}https://${DOMAIN}${NC}"
@@ -297,11 +297,11 @@ echo ""
 # ─── Save connection info ─────────────────────────────────────────────────────
 cat > "$HOME/.birkin" <<INFO
 # Birkin connection info — created $(date -u)
-AGEMES_SERVER_IP=${SERVER_IP}
-AGEMES_SERVER_NAME=${SERVER_NAME}
-AGEMES_DOMAIN=${DOMAIN}
-AGEMES_SSH_KEY=${SSH_KEY_PATH}
-AGEMES_INSTALLED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+BIRKIN_SERVER_IP=${SERVER_IP}
+BIRKIN_SERVER_NAME=${SERVER_NAME}
+BIRKIN_DOMAIN=${DOMAIN}
+BIRKIN_SSH_KEY=${SSH_KEY_PATH}
+BIRKIN_INSTALLED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 INFO
 
 log_ok "Connection info saved to ~/.birkin"

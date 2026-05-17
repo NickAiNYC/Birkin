@@ -120,7 +120,7 @@ cat <<SVG
     .ft{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; fill: #888780; }
   </style>
 </defs>
-<text class="h" x="340" y="26" text-anchor="middle">AGEMES GOVERNANCE PIPELINE · GENERATED ${GENERATED_AT}</text>
+<text class="h" x="340" y="26" text-anchor="middle">BIRKIN GOVERNANCE PIPELINE · GENERATED ${GENERATED_AT}</text>
 
 <!-- Gate 1 -->
 <rect x="20" y="44" width="108" height="130" rx="8" fill="$(gate_fill $G1)" stroke="$(gate_stroke $G1)" stroke-width="0.5"/>

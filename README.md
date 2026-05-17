@@ -47,14 +47,14 @@ Your iPhone → Cloudflare Tunnel → Birkin (Hermes Agent + Governance Layer) �
 **Birkin governs itself.** One command proves it:
 
 ```bash
-./scripts/governance-check.sh
+./governance-check.sh
 ```
 
 Output:
 ```
 [1/5] Hermes Gateway — ✅ running, API responding
 [2/5] Audit Integrity — ✅ append-only, monotonic timestamps, 0 tampered entries
-[3/5] Skill Versioning — ✅ git-tracked, all changes committed, 5 skills deployed
+[3/5] Skill Versioning — ✅ git-tracked, all changes committed, 6 skills deployed
 [4/5] Drift Detection — ✅ 5 benchmarks stable (cosine similarity ≥ 0.85)
 [5/5] Health Endpoint — ✅ JSON governance status, uptime 14 days
 
@@ -146,7 +146,7 @@ Each gate is cryptographic. Failure stops the agent and alerts you immediately.
 │  ┌────────────────────────────────────────────────────────────────────┐   │
 │  │                         SKILLS (6 Deployed)                        │   │
 │  │  daily-brief • sourcing-intel • competitor-monitor                │   │
-│  │  directora-health • code-governance                                │   │
+│  │  directora-health • code-governance • send-telegram-alert          │   │
 │  │  Each: YAML frontmatter + cron schedule + failure recovery         │   │
 │  └────────────────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────────────────┘
@@ -171,7 +171,7 @@ Then open http://localhost:3000 in your browser. Hermes is running. Governance i
 
 Check governance:
 ```bash
-docker compose exec hermes ./scripts/governance-check.sh
+docker compose exec hermes ./governance-check.sh
 ```
 
 ---
@@ -216,7 +216,7 @@ source deploy.env && ./deploy.sh \
 - ✅ Server hardened (UFW, fail2ban, SSH key auth)
 - ✅ Hermes + Open WebUI running
 - ✅ Cloudflare Tunnel live
-- ✅ All 5 skills deployed
+- ✅ All 6 skills deployed
 - ✅ Governance gates passing
 - ✅ iPhone PWA ready
 
@@ -337,6 +337,7 @@ hermes run --skill my-skill
 | **competitor-monitor** | Track NYC aesthetic clinics for website/pricing changes | Manual or cron | Sunday 5 PM ET |
 | **directora-health** | Check Directora API, ledger integrity, Prometheus metrics | Manual or cron | Every 6 hours |
 | **code-governance** | Post-push validation: tests, contracts, locks, scripts | Webhook or manual | On git push to main |
+| **send-telegram-alert** | Telegram alerting for audit events, failures, cost reports | Manual or triggered | On audit events |
 
 All skills include Telegram alerting, error recovery, and audit logging.
 
@@ -349,7 +350,7 @@ All skills include Telegram alerting, error recovery, and audit logging.
 Birkin doesn't **trust** itself. It **proves** its integrity every hour:
 
 ```bash
-$ ./scripts/governance-check.sh
+$ ./governance-check.sh
 ✅ BIRKIN GOVERNANCE INTACT
 ```
 
@@ -433,7 +434,7 @@ From the server (SSH in or via scripts/):
 
 ```bash
 # Full governance validation
-./scripts/governance-check.sh
+./governance-check.sh
 
 # Audit log queries
 ./scripts/send_telegram_alert.py                  # last 20 actions
@@ -448,8 +449,8 @@ From the server (SSH in or via scripts/):
 ./scripts/skill-diff.sh --skill daily-brief  # one skill
 
 # Drift detection
-./scripts/drift-check.sh                # run 5 benchmarks
-./scripts/drift-check.sh --update-baseline  # save as new baseline
+./drift-check.sh                # run 5 benchmarks
+./drift-check.sh --update-baseline  # save as new baseline
 
 # Kill switches
 ./agent-stop.sh                 # graceful shutdown
@@ -473,7 +474,7 @@ Response:
   "agent_status": "healthy",
   "uptime_seconds": 432891,
   "last_action_timestamp": "2026-05-18T09:23:00Z",
-  "skill_count": 5,
+  "skill_count": 6,
   "audit_log_entries": 1427,
   "drift_check_last_run": "2026-05-18T06:00:00Z",
   "drift_check_status": "PASS",
@@ -496,7 +497,7 @@ Want to add a skill? Fork the repo and submit a PR.
 - [ ] Tested locally (`hermes run --skill your-skill`)
 - [ ] Skill version bumped (semantic versioning)
 - [ ] Git commit with clear message
-- [ ] Governance check passes (`./scripts/governance-check.sh`)
+- [ ] Governance check passes (`./governance-check.sh`)
 
 **Community skills roadmap:**
 - [ ] Slack integration for alerts
@@ -525,7 +526,7 @@ Record this on your iPhone. No editing needed.
 2. **0:10–0:25** — Voice: *"Run sourcing intelligence and report new suppliers this week"*
 3. **0:25–0:40** — Agent streams Markdown results (suppliers, veto scores, actions)
 4. **0:40–0:50** — Open `health.birkin.yourdomain.com/health` → show JSON governance status
-5. **0:50–0:60** — SSH to server → `./scripts/governance-check.sh` → show "✅ GOVERNANCE INTACT"
+5. **0:50–0:60** — SSH to server → `./governance-check.sh` → show "✅ GOVERNANCE INTACT"
 
 [Full script →](DEMO_SCRIPT.md)
 
