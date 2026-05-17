@@ -1,0 +1,164 @@
+# Birkin — Local Sandbox
+# Run a fully governed Hermes agent on your laptop. No server, no Cloudflare, no Hetzner.
+#
+# Usage:
+#   export OPENROUTER_API_KEY=sk-or-v1-xxx
+#   docker compose up -d
+#
+# Then:
+#   Open http://localhost:3000       → Open WebUI (chat)
+#   Open http://localhost:9999/health → Governance JSON status
+#   docker compose exec hermes ./scripts/governance-check.sh
+#
+# Stop:
+#   docker compose down
+#
+# All data persists in Docker volumes. To reset completely:
+#   docker compose down -v
+
+
+services:
+
+  # ─── Hermes Agent ───────────────────────────────────────────────────────────
+  # The core AI agent with SKILL.md loop, SQLite audit log, and cron jobs.
+  hermes:
+    # Verify this image exists before deploy: docker pull ghcr.io/hermesai/hermes:v0.13.0
+    # Fallback: build from https://github.com/NousResearch/hermes-agent
+    image: ghcr.io/hermesai/hermes:v0.13.0
+    container_name: birkin-hermes
+    restart: unless-stopped
+    environment:
+      HERMES_PORT: "8686"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in your environment}"
+      HERMES_MODEL: "anthropic/claude-sonnet-4"
+      HERMES_FALLBACK_MODEL: "anthropic/claude-haiku-4-5"
+      HERMES_SKILLS_DIR: "/app/skills"
+      HERMES_AUDIT_DB: "/data/audit.db"
+      HERMES_DRIFT_DIR: "/data/drift"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
+      # Cost optimization: route cheap tasks to Gemini Flash
+      HERMES_PROVIDER_ROUTING: "sort:price"
+      HERMES_AUX_MODEL: "google/gemini-flash-1.5"
+    volumes:
+      - ./skills:/app/skills:ro          # Your SKILL.md files (read-only — edit on host)
+      - ./scripts:/app/scripts:ro        # Governance scripts (read-only)
+      - hermes-data:/data                # Audit log, drift results, chat history
+      - hermes-skills-git:/app/skills-git # Git-tracked skill versions
+    ports:
+      - "8686:8686"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8686/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - birkin
+
+  # ─── Open WebUI ─────────────────────────────────────────────────────────────
+  # Mobile-friendly chat UI with voice input. Add to iPhone Home Screen as PWA.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: birkin-webui
+    restart: unless-stopped
+    environment:
+      OPENAI_API_BASE_URL: "http://hermes:8686/v1"
+      OPENAI_API_KEY: "hermes-local"  # Hermes validates against OPENROUTER_API_KEY internally
+      WEBUI_NAME: "Birkin"
+      WEBUI_URL: "http://localhost:3000"
+      DEFAULT_MODELS: "birkin"
+      ENABLE_SIGNUP: "false"          # Single-user: admin account only
+      ENABLE_LOGIN_FORM: "true"
+      ENABLE_RAG_WEB_SEARCH: "true"
+      RAG_WEB_SEARCH_ENGINE: "duckduckgo"
+      ENABLE_COMMUNITY_SHARING: "false"
+      AUDIO_STT_ENGINE: "openai"      # Enables voice input via Whisper
+      AUDIO_STT_OPENAI_API_BASE_URL: "http://hermes:8686/v1"
+    volumes:
+      - webui-data:/app/backend/data
+    ports:
+      - "3000:8080"
+    depends_on:
+      hermes:
+        condition: service_healthy
+    networks:
+      - birkin
+
+  # ─── Health Endpoint ─────────────────────────────────────────────────────────
+  # Flask app exposing governance JSON status on port 9999.
+  # Check: curl http://localhost:9999/health | jq .
+  health:
+    build:
+      context: .
+      dockerfile: health/Dockerfile
+    container_name: birkin-health
+    restart: unless-stopped
+    environment:
+      HERMES_API_URL: "http://hermes:8686"
+      HERMES_AUDIT_DB: "/data/audit.db"
+      HERMES_SKILLS_DIR: "/app/skills"
+      HERMES_DRIFT_DIR: "/data/drift"
+      HEALTH_PORT: "9999"
+    volumes:
+      - hermes-data:/data:ro            # Read-only access to audit log and drift results
+      - ./skills:/app/skills:ro
+    ports:
+      - "9999:9999"
+    depends_on:
+      hermes:
+        condition: service_healthy
+    networks:
+      - birkin
+
+  # ─── Governance Scheduler ────────────────────────────────────────────────────
+  # Runs scheduled governance scripts (drift-check, daily-brief, etc.)
+  # In production, these are systemd timers. In Docker, we use supercronic.
+  scheduler:
+    image: apteno/alpine-jq:latest
+    container_name: birkin-scheduler
+    restart: unless-stopped
+    command: >
+      sh -c "
+        apk add --no-cache curl sqlite python3 git &&
+        while true; do
+          echo '[scheduler] Running drift-check at $(date -u)' &&
+          sh /app/scripts/drift-check.sh 2>&1 | tail -5
+          sleep 604800  # Weekly (7 days)
+        done
+      "
+    environment:
+      HERMES_API_URL: "http://hermes:8686"
+      HERMES_AUDIT_DB: "/data/audit.db"
+      HERMES_DRIFT_DIR: "/data/drift"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - hermes-data:/data
+    depends_on:
+      hermes:
+        condition: service_healthy
+    networks:
+      - birkin
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  hermes-data:
+    driver: local
+    labels:
+      com.birkin.description: "Hermes audit log, drift results, and chat history"
+  hermes-skills-git:
+    driver: local
+    labels:
+      com.birkin.description: "Git-tracked skill versions (governance gate 3)"
+  webui-data:
+    driver: local
+    labels:
+      com.birkin.description: "Open WebUI user data and settings"
+
+# ─── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  birkin:
+    driver: bridge
+    labels:
+      com.birkin.description: "Internal network — services talk to each other, not the internet directly"

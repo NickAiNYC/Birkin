@@ -1,0 +1,123 @@
+<svg width="100%" viewBox="0 0 680 420" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Birkin Governance Pipeline — 5 gates, 9 checks</title>
+<desc>A pipeline diagram showing the 5 governance gates: Gateway Process, Audit Integrity, Skill Versioning, Drift Detection, and Health Endpoint. All gates show passing status with green indicators.</desc>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#0F6E56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <style>
+    .box { fill: #E1F5EE; stroke: #0F6E56; }
+    .label-main { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; font-weight: 600; fill: #085041; }
+    .label-sub  { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 400; fill: #0F6E56; }
+    .label-tiny { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 9px;  font-weight: 500; fill: #085041; letter-spacing: 0.06em; }
+    .badge-pass { fill: #EAF3DE; stroke: #639922; }
+    .badge-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 600; fill: #3B6D11; }
+    .header     { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 10px; fill: #888780; letter-spacing: 0.08em; }
+    .banner     { fill: #EAF3DE; stroke: #639922; }
+    .banner-main{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; font-weight: 600; fill: #27500A; }
+    .banner-sub { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; fill: #3B6D11; }
+    .footer     { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; fill: #888780; }
+    @media (prefers-color-scheme: dark) {
+      .box       { fill: #04342C; stroke: #5DCAA5; }
+      .label-main{ fill: #9FE1CB; }
+      .label-sub { fill: #5DCAA5; }
+      .label-tiny{ fill: #9FE1CB; }
+      .badge-pass{ fill: #173404; stroke: #639922; }
+      .badge-text{ fill: #C0DD97; }
+      .header    { fill: #888780; }
+      .banner    { fill: #173404; stroke: #97C459; }
+      .banner-main{ fill: #C0DD97; }
+      .banner-sub{ fill: #97C459; }
+      .footer    { fill: #5F5E5A; }
+      line       { stroke: #5DCAA5 !important; }
+    }
+  </style>
+</defs>
+
+<text class="header" x="340" y="26" text-anchor="middle">AGEMES GOVERNANCE PIPELINE · 5 GATES · 9 CHECKS</text>
+
+<!-- Gate 1 -->
+<rect class="box" x="20" y="44" width="108" height="130" rx="8" stroke-width="0.5"/>
+<text class="label-main" x="74" y="72" text-anchor="middle">Gateway</text>
+<text class="label-main" x="74" y="88" text-anchor="middle">Process</text>
+<text class="label-sub"  x="74" y="108" text-anchor="middle">Hermes running?</text>
+<text class="label-sub"  x="74" y="122" text-anchor="middle">API responding?</text>
+<rect class="badge-pass" x="30" y="140" width="88" height="14" rx="7" stroke-width="0.5"/>
+<text class="label-tiny" x="74" y="151" text-anchor="middle">2 CHECKS</text>
+
+<!-- Arrow 1→2 -->
+<line x1="128" y1="109" x2="152" y2="109" stroke="#0F6E56" stroke-width="1" marker-end="url(#arrow)"/>
+
+<!-- Gate 2 -->
+<rect class="box" x="152" y="44" width="108" height="130" rx="8" stroke-width="0.5"/>
+<text class="label-main" x="206" y="72" text-anchor="middle">Audit</text>
+<text class="label-main" x="206" y="88" text-anchor="middle">Integrity</text>
+<text class="label-sub"  x="206" y="108" text-anchor="middle">Append-only?</text>
+<text class="label-sub"  x="206" y="122" text-anchor="middle">Monotonic</text>
+<text class="label-sub"  x="206" y="136" text-anchor="middle">timestamps?</text>
+<rect class="badge-pass" x="162" y="148" width="88" height="14" rx="7" stroke-width="0.5"/>
+<text class="label-tiny" x="206" y="159" text-anchor="middle">2 CHECKS</text>
+
+<!-- Arrow 2→3 -->
+<line x1="260" y1="109" x2="284" y2="109" stroke="#0F6E56" stroke-width="1" marker-end="url(#arrow)"/>
+
+<!-- Gate 3 -->
+<rect class="box" x="284" y="44" width="108" height="130" rx="8" stroke-width="0.5"/>
+<text class="label-main" x="338" y="72" text-anchor="middle">Skill</text>
+<text class="label-main" x="338" y="88" text-anchor="middle">Versioning</text>
+<text class="label-sub"  x="338" y="108" text-anchor="middle">Git repo?</text>
+<text class="label-sub"  x="338" y="122" text-anchor="middle">Committed?</text>
+<text class="label-sub"  x="338" y="136" text-anchor="middle">Versioned?</text>
+<rect class="badge-pass" x="294" y="148" width="88" height="14" rx="7" stroke-width="0.5"/>
+<text class="label-tiny" x="338" y="159" text-anchor="middle">3 CHECKS</text>
+
+<!-- Arrow 3→4 -->
+<line x1="392" y1="109" x2="416" y2="109" stroke="#0F6E56" stroke-width="1" marker-end="url(#arrow)"/>
+
+<!-- Gate 4 -->
+<rect class="box" x="416" y="44" width="108" height="130" rx="8" stroke-width="0.5"/>
+<text class="label-main" x="470" y="72" text-anchor="middle">Drift</text>
+<text class="label-main" x="470" y="88" text-anchor="middle">Detection</text>
+<text class="label-sub"  x="470" y="108" text-anchor="middle">Baseline exists?</text>
+<text class="label-sub"  x="470" y="122" text-anchor="middle">Similarity</text>
+<text class="label-sub"  x="470" y="136" text-anchor="middle">≥ 0.85?</text>
+<rect class="badge-pass" x="426" y="148" width="88" height="14" rx="7" stroke-width="0.5"/>
+<text class="label-tiny" x="470" y="159" text-anchor="middle">1 CHECK</text>
+
+<!-- Arrow 4→5 -->
+<line x1="524" y1="109" x2="548" y2="109" stroke="#0F6E56" stroke-width="1" marker-end="url(#arrow)"/>
+
+<!-- Gate 5 -->
+<rect class="box" x="548" y="44" width="108" height="130" rx="8" stroke-width="0.5"/>
+<text class="label-main" x="602" y="72" text-anchor="middle">Health</text>
+<text class="label-main" x="602" y="88" text-anchor="middle">Endpoint</text>
+<text class="label-sub"  x="602" y="108" text-anchor="middle">Port 9999</text>
+<text class="label-sub"  x="602" y="122" text-anchor="middle">HTTP 200?</text>
+<text class="label-sub"  x="602" y="136" text-anchor="middle">Valid JSON?</text>
+<rect class="badge-pass" x="558" y="148" width="88" height="14" rx="7" stroke-width="0.5"/>
+<text class="label-tiny" x="602" y="159" text-anchor="middle">2 CHECKS</text>
+
+<!-- Pass badges under each gate -->
+<rect class="badge-pass" x="20"  y="194" width="108" height="26" rx="6" stroke-width="0.5"/>
+<text class="badge-text"  x="74"  y="210" text-anchor="middle">✓ PASSING</text>
+<rect class="badge-pass" x="152" y="194" width="108" height="26" rx="6" stroke-width="0.5"/>
+<text class="badge-text"  x="206" y="210" text-anchor="middle">✓ PASSING</text>
+<rect class="badge-pass" x="284" y="194" width="108" height="26" rx="6" stroke-width="0.5"/>
+<text class="badge-text"  x="338" y="210" text-anchor="middle">✓ PASSING</text>
+<rect class="badge-pass" x="416" y="194" width="108" height="26" rx="6" stroke-width="0.5"/>
+<text class="badge-text"  x="470" y="210" text-anchor="middle">✓ PASSING</text>
+<rect class="badge-pass" x="548" y="194" width="108" height="26" rx="6" stroke-width="0.5"/>
+<text class="badge-text"  x="602" y="210" text-anchor="middle">✓ PASSING</text>
+
+<!-- Divider -->
+<line x1="40" y1="254" x2="640" y2="254" stroke="#B4B2A9" stroke-width="0.5"/>
+
+<!-- GOVERNANCE INTACT banner -->
+<rect class="banner" x="120" y="270" width="440" height="52" rx="8" stroke-width="0.5"/>
+<text class="banner-main" x="340" y="293" text-anchor="middle">✅  AGENT GOVERNANCE INTACT</text>
+<text class="banner-sub"  x="340" y="312" text-anchor="middle">9 / 9 checks passed · exit code 0 · agent operating within boundaries</text>
+
+<!-- Footer -->
+<text class="footer" x="340" y="356" text-anchor="middle">Run: ./scripts/governance-check.sh</text>
+<text class="footer" x="340" y="374" text-anchor="middle">github.com/NickAiNYC/birkin</text>
+</svg>

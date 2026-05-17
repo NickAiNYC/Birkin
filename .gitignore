@@ -1,0 +1,33 @@
+# Secrets — NEVER commit
+deploy.env
+*.env
+.env*
+*.key
+*.pem
+credentials.json
+service-account.json
+
+# Audit data (generated at runtime)
+audit.db
+**/audit.db
+
+# Drift results (generated at runtime)
+drift/
+**/drift/
+
+# Docker volumes
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
