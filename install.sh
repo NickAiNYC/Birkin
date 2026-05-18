@@ -74,6 +74,10 @@ if [[ ! -f .env ]]; then
 # Birkin runtime config — edit and \`docker compose up -d\` to apply
 HERMES_URL=${HERMES_URL}
 
+# Open WebUI signup — set to false after you have created your admin account
+# The first user to register is automatically made admin.
+ENABLE_SIGNUP=true
+
 # Optional: Telegram alerts on governance failure
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
@@ -118,9 +122,13 @@ ${GREEN}${BOLD}✓ Birkin is running.${NC}
   ${BOLD}Hermes target${NC} →  ${HERMES_URL}
 
   Next:
-    1. Open http://localhost:3000 in Safari on your iPhone (same WiFi as this machine)
-    2. Share → Add to Home Screen → name it "Birkin"
-    3. Tap the icon — full-screen PWA, voice input, everything logged
+    1. Open http://localhost:3000 in your browser
+    2. Register — the FIRST user to sign up is automatically made admin
+    3. Open .env, set ENABLE_SIGNUP=false, then run: docker compose up -d
+       (locks the instance so no one else can register)
+    4. Open http://localhost:3000 in Safari on your iPhone (same WiFi)
+    5. Share → Add to Home Screen → name it "Birkin"
+    6. Tap the icon — full-screen PWA, voice input, everything logged
 
   Manage:
     cd ${INSTALL_DIR}

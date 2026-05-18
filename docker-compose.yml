@@ -47,7 +47,7 @@ services:
       OPENAI_API_KEY: "${HERMES_API_KEY:-hermes-local}"
       WEBUI_NAME: "Birkin"
       WEBUI_URL: "http://localhost:${BIRKIN_PORT:-3000}"
-      ENABLE_SIGNUP: "false"
+      ENABLE_SIGNUP: "${ENABLE_SIGNUP:-true}"
       ENABLE_LOGIN_FORM: "true"
       ENABLE_RAG_WEB_SEARCH: "true"
       RAG_WEB_SEARCH_ENGINE: "duckduckgo"
