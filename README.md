@@ -553,7 +553,7 @@ Want to add a skill? Fork the repo and submit a PR.
 
 ## 📚 Documentation
 
-- [DEPLOYMENT.md](DEPLOYMENT.md) — detailed deployment walkthrough
+- [deploy.sh](deploy.sh) — Hetzner + Cloudflare Tunnel deployment script (read the VERIFY notices before running)
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to add skills and contribute
 - [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) — well-commented skill template
 - [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — 60-second demo recording script
