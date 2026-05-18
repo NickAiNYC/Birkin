@@ -1,39 +1,58 @@
 <div align="center">
-  <img alt="Birkin — autonomous Hermes agent that carries its own proof of integrity" src="assets/birkin-banner.png" width="900" />
+  <img alt="Birkin — tamper-evident audit log for autonomous agents" src="assets/birkin-banner.png" width="900" />
 </div>
 
 # Birkin
 
-<div align="center">
+**A tamper-evident audit log for autonomous agents. One command proves it.**
 
-**iPhone Control + Hash-Chained Audit for Your Hermes Agent**
-
-![Free](https://img.shields.io/badge/cost-free-brightgreen?style=for-the-badge)
-![iPhone PWA](https://img.shields.io/badge/control-iPhone%20PWA-black?style=for-the-badge)
-![One Command](https://img.shields.io/badge/install-one%20command-FF7A00?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
-
-![Governance](https://img.shields.io/badge/governance-5%2F5%20gates%20passing-brightgreen)
-![Audit](https://img.shields.io/badge/audit-SHA--256%20chained-0A2540)
 [![Tamper Test](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml/badge.svg)](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Topics](https://img.shields.io/badge/topics-ai--agent%20%7C%20audit--log%20%7C%20hash--chain%20%7C%20hermes%20%7C%20governance-lightgrey)
 
-Already running [Hermes Agent](https://hermes-agent.nousresearch.com/)? Point Birkin at it and get an **iPhone PWA**, **hash-chained audit log**, **drift detection**, and **kill switches** — without modifying your Hermes install.
-
-</div>
+Birkin wraps a running [Hermes Agent](https://hermes-agent.nousresearch.com/) with a **SHA-256 hash-chained SQLite audit log**, a 5-gate governance check, an iPhone PWA, and kill switches — without modifying your Hermes install.
 
 ---
 
-## ⚡ One-command install
+## The Tamper Test
 
-<div align="center">
-  <img alt="Birkin" src="assets/birkin-icon.png" width="140" />
-</div>
+Most audit logs are append-only by convention. Birkin's is hash-chained at the row level: every row stores `SHA-256(prev_hash || payload)`. Mutate a single byte anywhere in the chain and verification fails, even if database triggers were disabled first.
+
+<!-- PLACEHOLDER: 20-second terminal GIF showing tamper-test.sh run (Phase 2 — record with asciinema) -->
+
+Run it yourself:
+
+```bash
+./tests/tamper-test.sh
+```
+
+```text
+Birkin tamper-detection test
+[1/6]  schema initialized (table + triggers)
+[2/6]  appended 5 hash-chained rows
+[3/6]  clean chain verifies PASS
+[4/6]  trigger blocks UPDATE (append-only enforced at DB layer)
+[5/6]  simulated attacker: dropped triggers, rewrote row 3
+[6/6]  tamper DETECTED by hash chain:
+       CHAIN BROKEN at row 3 (row_tampered)
+       row_hash mismatch (expected ad2548c43ed6..., got 9f1894ea0f03...)
+
+PASS — hash chain catches mutation even when triggers are bypassed.
+```
+
+Source: [`scripts/audit-init.sql`](scripts/audit-init.sql) · [`scripts/audit-append.py`](scripts/audit-append.py) · [`scripts/verify-chain.py`](scripts/verify-chain.py) · [`tests/tamper-test.sh`](tests/tamper-test.sh)
+
+For a full description of what this protects against and what it does not, see [THREAT_MODEL.md](THREAT_MODEL.md).
+
+---
+
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
 ```
 
-Or if you don't trust pipe-to-bash (you shouldn't, but the script is 100 lines you can read first):
+Or clone and compose directly:
 
 ```bash
 git clone https://github.com/NickAiNYC/Birkin && cd Birkin
@@ -44,27 +63,39 @@ Then open `http://localhost:3000` in Safari on your iPhone → **Share → Add t
 
 ---
 
+## What It Ships
+
+- **Hash-chained audit log** — SHA-256 chain, append-only triggers, tamper test in CI
+- **5-gate governance check** — process, audit integrity, skill versioning, drift, health
+- **iPhone PWA** — Open WebUI configured to talk to your Hermes, installable from Safari
+- **Drift detection** — 5 deterministic benchmark questions, bigram cosine similarity, 0.85 threshold (see [Drift Detection](#drift-detection))
+- **Kill switches** — `agent-stop.sh` (graceful), `agent-lockdown.sh` (network lockdown)
+- **Telegram alerts** — optional, fires on governance failure
+- **6 example SKILL.md files** — templates for daily-brief, sourcing-intel, competitor-monitor, health-check, code-governance, and Telegram alerting
+
+## What It Does Not Ship
+
+- Hermes Agent itself — bring your own ([hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/))
+- An LLM key — your Hermes already has one
+- A hosted service — runs on your machine; your data stays local
+
+Runs on a laptop, Raspberry Pi, or free-tier VPS. Optional `deploy.sh` provisions a Hetzner box with Cloudflare Tunnel for phone access outside your LAN (~€4.51/mo).
+
+---
+
 ## How to Get Your Hermes API Key
 
-This is the `API_SERVER_KEY` in your Hermes config — **not** your DeepSeek, OpenRouter, or Anthropic key. Generate a separate one.
-
-**1. Check if you already have one:**
+The `HERMES_API_KEY` Birkin needs is the `API_SERVER_KEY` from your Hermes config — not your model provider key.
 
 ```bash
+# Check if you already have one
 grep API_SERVER_KEY ~/.hermes/.env
-```
 
-If it prints a value, you're done — use that as `HERMES_API_KEY` in Birkin's `.env`.
-
-**2. If missing, generate one:**
-
-```bash
+# If missing, generate one
 echo "API_SERVER_KEY=$(openssl rand -hex 16)" >> ~/.hermes/.env
 ```
 
-**3. Enable the API server in Hermes config:**
-
-Open `~/.hermes/config.yaml` and confirm this block exists:
+Confirm `~/.hermes/config.yaml` has the API server enabled:
 
 ```yaml
 platforms:
@@ -73,538 +104,189 @@ platforms:
     port: 8686
 ```
 
-**4. Restart Hermes:**
-
-```bash
-hermes gateway start
-```
-
-**5. Verify it works:**
-
-```bash
-source ~/.hermes/.env
-curl http://localhost:8686/health -H "Authorization: Bearer $API_SERVER_KEY"
-```
-
-You should get `{"status": "ok"}`. If you get 401, the key in `.env` doesn't match what Hermes loaded — restart Hermes and retry.
-
-> **Never reuse a model provider key** (DeepSeek, OpenRouter, Anthropic, etc.) as your `API_SERVER_KEY`. Generate a dedicated one with the command above.
+Restart Hermes and verify: `curl http://localhost:8686/health -H "Authorization: Bearer $API_SERVER_KEY"` should return `{"status": "ok"}`.
 
 ---
 
-## What Birkin ships
-
-- 📱 **Open WebUI** configured to talk to *your* Hermes — installable as an iPhone PWA
-- 🛡 **Hash-chained audit log** — SHA-256 chain, append-only triggers, tamper test passing in CI
-- 🔍 **Drift detection** — weekly cosine similarity benchmarks
-- 🛑 **Kill switches** — `agent-stop.sh`, `agent-lockdown.sh`
-- 🪪 **5-gate governance check** — process, audit, skills, drift, health
-- 📨 **Telegram alerts** (optional) on governance failure
-- 🧩 **6 example SKILL.md files** to drop into your Hermes skills directory
-
-## What Birkin does NOT ship
-
-- ❌ **Hermes Agent itself** — bring your own. See [hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/)
-- ❌ **An LLM key** — your Hermes already has one
-- ❌ **A hosted service** — runs on your machine by design (free, private, your data stays local)
-
-Runs on your laptop, a Raspberry Pi, a free-tier VPS — anywhere Docker runs. Optional `deploy.sh` provisions a Hetzner box with Cloudflare Tunnel if you want phone access from outside your LAN (~€4.51/mo for the VPS).
-
----
-
-## The Core Promise
-
-**Birkin governs itself.** One command proves it:
+## Governance Check
 
 ```bash
 ./governance-check.sh
 ```
 
-Output:
 ```
-[1/5] Hermes Gateway — ✅ running, API responding
-[2/5] Audit Integrity — ✅ append-only, monotonic timestamps, 0 tampered entries
-[3/5] Skill Versioning — ✅ git-tracked, all changes committed, 6 skills deployed
-[4/5] Drift Detection — ✅ 5 benchmarks stable (cosine similarity ≥ 0.85)
-[5/5] Health Endpoint — ✅ JSON governance status, uptime 14 days
+[1/5] Hermes Gateway     — running, API responding
+[2/5] Audit Integrity    — append-only, monotonic timestamps, 0 tampered entries
+[3/5] Skill Versioning   — git-tracked, all changes committed, 6 skills deployed
+[4/5] Drift Detection    — 5 benchmarks stable (cosine similarity >= 0.85)
+[5/5] Health Endpoint    — JSON governance status, uptime 14 days
 
-✅ BIRKIN GOVERNANCE INTACT
-   All critical gates passed. Agent is operating within defined boundaries.
+BIRKIN GOVERNANCE INTACT
 ```
 
-**That's it.** No faith required. Cryptographic proof.
-
----
-
-## 🛡️ The Tamper Test (Don't Take My Word For It)
-
-Most "audit logs" are append-only by convention. Birkin's audit log is **hash-chained at the row level** — every row carries `SHA-256(prev_hash || payload)`. Mutate a single byte and the next verification fails.
-
-Two layers of defense:
-1. **SQLite triggers** block `UPDATE` and `DELETE` on `audit_log` at the database layer.
-2. **Hash chain** catches mutation even when an attacker bypasses the triggers via file-level access.
-
-Prove it yourself in 5 seconds:
-
-```bash
-./tests/tamper-test.sh
-```
-
-```text
-🧪 Birkin tamper-detection test
-[1/6] ✅ schema initialized (table + triggers)
-[2/6] ✅ appended 5 hash-chained rows
-[3/6] ✅ clean chain verifies PASS
-[4/6] ✅ trigger blocks UPDATE (append-only enforced at DB layer)
-[5/6] 🔓 simulated attacker: dropped triggers, rewrote row 3
-[6/6] ✅ tamper DETECTED by hash chain:
-       ❌ CHAIN BROKEN at row 3 (row_tampered)
-          row_hash mismatch (expected ad2548c43ed6..., got 9f1894ea0f03...)
-
-🛡️  PASS — Birkin's audit chain catches mutation even when triggers are bypassed.
-```
-
-Source: [`scripts/audit-init.sql`](scripts/audit-init.sql) · [`scripts/audit-append.py`](scripts/audit-append.py) · [`scripts/verify-chain.py`](scripts/verify-chain.py) · [`tests/tamper-test.sh`](tests/tamper-test.sh)
-
----
-
-## Why This Matters
-
-| Problem | Existing Agents | Birkin |
-|---------|-----------------|--------|
-| **Auditability** | "Trust me, I logged it" | **SHA-256 hash-chained SQLite.** Every row links to the previous. Mutate one byte → chain breaks → CI fails. Proven by `tests/tamper-test.sh`. |
-| **Reproducibility** | Weights shift randomly | Git-versioned SKILL.md files. `git diff` the agent's brain. |
-| **Behavior Drift** | Degrades silently | Weekly cosine similarity checks. Flags if < 0.85. |
-| **Cost** | $100-300/mo (Claude API + infra) | **Free.** Birkin itself costs nothing. Your only spend is whatever your Hermes already uses for LLM calls. |
-| **Control Surface** | Laptop SSH or web dashboard | iPhone PWA. Voice input. Telegram alerts. |
-| **Safety Bounds** | Hope | 5-gate governance validation. Kill switches. Lockdown mode. |
-
----
-
-## Governance Pipeline
-
-Birkin's heart is its **5-gate governance validation**:
-
-```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ GATE 1       │    │ GATE 2       │    │ GATE 3       │    │ GATE 4       │    │ GATE 5       │
-│              │    │              │    │              │    │              │    │              │
-│ Process      │───▶│ Audit        │───▶│ Skill        │───▶│ Drift        │───▶│ Health       │
-│ Running?     │    │ Integrity    │    │ Versioning   │    │ Detection    │    │ Endpoint     │
-│              │    │              │    │              │    │              │    │              │
-│ Hermes PID?  │    │ Append-only? │    │ Git-signed?  │    │ Cosine ≥0.85?│    │ /health 200? │
-│ API 200?     │    │ No overwrites?│   │ No unstaged? │    │ No divergence│    │ JSON valid?  │
-└──────┬───────┘    └──────┬───────┘    └──────┬───────┘    └──────┬───────┘    └──────┬───────┘
-       │                   │                   │                   │                   │
-       ✅                  ✅                  ✅                  ✅                  ✅
-```
-
-Each gate is cryptographic. Failure stops the agent and alerts you immediately.
+If any gate fails, the agent logs the breach, fires a Telegram alert, and suggests a stop.
 
 ---
 
 ## Architecture
 
-Birkin sits **between you and your existing Hermes Agent**. You bring Hermes; Birkin adds the iPhone control surface and the governance layer.
+Birkin sits between you and your existing Hermes Agent:
 
 ```
-                      ┌─────────────────────┐
-                      │  YOUR HERMES AGENT  │   ← you already run this
-                      │  (anywhere, any host)│      (Nous Research)
-                      └──────────┬──────────┘
-                                 │
-                                 │  OpenAI-compatible /v1
-                                 ▼
-        ┌────────────────────────────────────────────────┐
-        │                BIRKIN (this repo)              │
-        │  ┌──────────────────┐   ┌────────────────────┐ │
-        │  │  Open WebUI      │   │  Governance Layer  │ │
-        │  │  (Docker)        │   │                    │ │
-        │  │  • iPhone PWA    │   │  • SHA-256 audit   │ │
-        │  │  • Voice input   │   │    chain           │ │
-        │  │  • Custom logo   │   │  • Drift detection │ │
-        │  └──────────────────┘   │  • Kill switches   │ │
-        │  ┌──────────────────┐   │  • 5 gates         │ │
-        │  │  Health Endpoint │◄──┤  • Tamper test     │ │
-        │  │  /health JSON    │   │  • Telegram alerts │ │
-        │  └──────────────────┘   └────────────────────┘ │
-        └────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-                        📱  YOUR iPHONE
-                   (Safari → Add to Home Screen)
+              YOUR HERMES AGENT
+              (anywhere, any host)
+                     |
+                     | OpenAI-compatible /v1
+                     v
+        ┌──────────────────────────────────┐
+        │            BIRKIN                │
+        │  Open WebUI      Governance      │
+        │  (Docker)        Layer           │
+        │  iPhone PWA      SHA-256 audit   │
+        │  Voice input     Drift check     │
+        │                  Kill switches   │
+        │  Health Endpoint /health JSON    │
+        └──────────────────────────────────┘
+                     |
+                     v
+                YOUR iPHONE
 ```
-
-Everything runs on your machine by default. Optional: deploy to a remote VPS with Cloudflare Tunnel if you want PWA access from outside your LAN — see [`deploy.sh`](deploy.sh).
 
 ---
 
-## 🚀 Optional: Deploy to a remote VPS (~€4.51/mo)
+## Drift Detection
 
-If you want to reach the PWA from outside your home network, [`deploy.sh`](deploy.sh) provisions a Hetzner CX22 + Cloudflare Tunnel for you. This path is **optional** — most users run Birkin locally and use Tailscale or their home network for phone access.
+Gate 4 runs 5 deterministic benchmark questions against your Hermes instance and compares responses to a stored baseline using bigram cosine similarity:
+
+**Benchmark set:**
+1. "What is the capital of France?"
+2. "Explain the concept of an append-only audit log in one sentence."
+3. "List three principles of governed AI agent infrastructure."
+4. "What does PHI stand for in healthcare technology?"
+5. "Describe the difference between a hash chain and a Merkle tree in one sentence."
+
+**Methodology:** bigram cosine similarity between current and baseline response. Pass threshold: 0.85. Temperature is forced to 0 for determinism.
+
+**What it catches:** model swaps, config changes that shift output style, unexpected behavior changes after a Hermes upgrade.
+
+**What it does not catch:** subtle reasoning changes that preserve surface similarity, or drift in areas not covered by the 5 benchmarks.
+
+```bash
+./drift-check.sh                     # compare to baseline
+./drift-check.sh --update-baseline   # save new baseline after intentional change
+./drift-check.sh --threshold 0.90    # stricter threshold
+```
+
+Baseline stored at `~/.hermes/drift/baseline.json`. Update it after any intentional model or config change.
+
+---
+
+## Kill Switches
+
+```bash
+./agent-stop.sh        # graceful stop — does not delete logs or skills
+./agent-lockdown.sh    # restrict outbound to: OpenRouter, Cloudflare, Telegram, GitHub, DNS
+./agent-lockdown.sh --unlock
+```
+
+---
+
+## Optional: Deploy to VPS (~€4.51/mo)
+
+For PWA access outside your LAN, `deploy.sh` provisions a Hetzner CX22 + Cloudflare Tunnel:
 
 ```bash
 source deploy.env && ./deploy.sh \
-  --hetzner-token   "$HETZNER_TOKEN"   \
-  --cf-token        "$CF_TOKEN"        \
-  --domain          "$DOMAIN"          \
-  --openrouter-key  "$OPENROUTER_KEY"  \
-  --telegram-token  "$TELEGRAM_TOKEN"  \
-  --telegram-chat   "$TELEGRAM_CHAT"
+  --hetzner-token "$HETZNER_TOKEN" \
+  --cf-token      "$CF_TOKEN"      \
+  --domain        "$DOMAIN"        \
+  --openrouter-key "$OPENROUTER_KEY"
 ```
 
 Read the `VERIFY:` comments at the top of `deploy.sh` before running — this path is alpha.
 
 ---
 
-## 📱 Control from Your iPhone
+## Skills
 
-### 1. Add to Home Screen
+The repo ships 6 SKILL.md files as templates. Drop into `~/.hermes/skills/` and edit for your own services:
 
-- Open Safari → `https://birkin.yourdomain.com`
-- Tap **Share** → **Add to Home Screen**
-- Name it "Birkin"
-- Tap the icon — it opens full-screen like a native app
+| Skill | Purpose | Default trigger |
+|-------|---------|-----------------|
+| **daily-brief** | Morning intelligence summary | Cron 7 AM ET |
+| **sourcing-intel** | Search suppliers for new products | Cron Monday 8 AM ET |
+| **competitor-monitor** | Track competitor website/pricing changes | Cron Sunday 5 PM ET |
+| **directora-health** | External API health check (template) | Every 6 hours |
+| **code-governance** | Post-push validation: tests, locks, scripts | Git push webhook |
+| **send-telegram-alert** | Telegram alerting helper | On audit events |
 
-### 2. Use Voice Input
-
-- Tap the **microphone icon** in Open WebUI
-- Speak: *"Run the sourcing intelligence skill and report new peptide suppliers this week"*
-- Agent thinks → streams Markdown results
-- Everything logged to append-only audit
-
-### 3. Get Telegram Alerts
-
-When governance fails, Birkin posts to Telegram immediately:
-
-```
-🚨 GOVERNANCE ALERT
-
-❌ Drift check FAILED
-   Benchmark #3 diverged: cosine similarity 0.71 < 0.85
-   
-   Possible causes:
-   - New skill deployed without baseline update
-   - Model behavior changed
-   - Temperature/sampling config drifted
-   
-Audit log: https://health.birkin.yourdomain.com/health
-Skill diff: ssh -i ... birkin@... ./scripts/skill-diff.sh
-
-[Acknowledge] [Run governance-check]
-```
+See [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) for the schema. Skills are git-versioned; `git diff` the agent's behavior at any point.
 
 ---
 
-## 🏗️ Build Your Own Skills
-
-Every skill is a `SKILL.md` file with:
-- **YAML frontmatter** — name, description, version, triggers, tools needed, failure recovery steps
-- **Markdown body** — execution logic, delivery format, error handling
-
-### Skill Template
-
-```markdown
----
-name: my-skill
-description: What this skill does and when to trigger it
-version: 1.0.0
-triggers:
-  - cron: "0 9 * * *"
-    description: Every day at 9 AM
-tools_needed:
-  - web_search
-  - file_write
-  - terminal
-failure_recovery_steps:
-  - "If X fails, check Y"
-  - "Verify connectivity: curl https://api.example.com"
-  - "Manually trigger: hermes run --skill my-skill"
----
-
-# My Skill
-
-## Overview
-Clear explanation of what this skill does.
-
-## Execution Steps
-1. Step one
-2. Step two
-3. Step three
-
-## Delivery
-How results are sent (Telegram, file, stdout, etc.)
-
-## Error Handling
-What happens if something breaks.
-```
-
-### Deploy Your Skill
+## Health Endpoint
 
 ```bash
-cd ~/.hermes/skills
-cat > my-skill.md <<'SKILL'
----
-name: my-skill
-...
----
-# My Skill
-...
-SKILL
-
-git add my-skill.md
-git commit -m "Add my-skill v1.0.0"
-
-# Hermes auto-discovers and loads it
-hermes run --skill my-skill
+curl http://localhost:9999/health
 ```
 
----
-
-## 📊 Example Skills
-
-The repo ships **6 SKILL.md files** I actually run on my own Birkin — useful as templates more than turnkey features (your sourcing, your calendar, your services are different). Drop them into your Hermes `~/.hermes/skills/` directory and edit, or write your own following the [official Hermes SKILL.md spec](https://hermes-agent.nousresearch.com/docs/skills/).
-
-| Skill | Purpose | Trigger | Schedule |
-|-------|---------|---------|----------|
-| **daily-brief** | Morning intelligence (emails, calendar, sourcing, health, news, priority) | Manual or cron | 7 AM ET daily |
-| **sourcing-intel** | Search 1688 + Korean suppliers for new products | Manual or cron | Monday 8 AM ET |
-| **competitor-monitor** | Track NYC aesthetic clinics for website/pricing changes | Manual or cron | Sunday 5 PM ET |
-| **directora-health** | Health-check pattern against a separate service of mine (see [Directora](https://scrutexity.com)) — useful as a template for any external API health skill | Manual or cron | Every 6 hours |
-| **code-governance** | Post-push validation: tests, contracts, locks, scripts | Webhook or manual | On git push to main |
-| **send-telegram-alert** | Telegram alerting helper for audit events, failures, cost reports | Manual or triggered | On audit events |
-
-All include Telegram alerting hooks, error recovery, and audit logging.
-
----
-
-## 🛡️ Safety Bounds & Kill Switches
-
-### Safety Bounds Are Cryptographic
-
-Birkin doesn't **trust** itself. It **proves** its integrity every hour:
-
-```bash
-$ ./governance-check.sh
-✅ BIRKIN GOVERNANCE INTACT
-```
-
-If ANY gate fails:
-1. Agent logs the breach to audit
-2. Telegram alert fires immediately
-3. `agent-stop.sh` is suggested
-4. Manual investigation required
-
-### Kill Switch #1: Graceful Stop
-
-```bash
-./agent-stop.sh
-```
-
-Stops Hermes + Open WebUI + health endpoint cleanly. Does NOT delete audit logs or skills.
-
-### Kill Switch #2: Network Lockdown
-
-```bash
-./agent-lockdown.sh
-```
-
-Restricts outbound to ONLY:
-- OpenRouter API
-- Cloudflare Tunnel
-- Telegram Bot API
-- GitHub (for skill updates)
-- DNS
-
-Blocks all arbitrary HTTP calls. Blocks `web_research` tool (intentionally).
-
----
-
-## 💰 Cost
-
-**Birkin itself is free.** It runs in Docker on hardware you already own.
-
-Your LLM cost is whatever your Hermes Agent already spends — Birkin doesn't add any model calls.
-
-If you want PWA access from outside your LAN, the *optional* `deploy.sh` provisions:
-
-| Service | Monthly | Notes |
-|---------|---------|-------|
-| Hetzner CX22 | ~€4.51 | 2 vCPU, 4 GB RAM, 40 GB SSD |
-| Cloudflare Tunnel | $0 | Free tier |
-| Domain | optional | Use a subdomain you already own |
-
-That's the upper bound. Local-only users pay nothing.
-
----
-
-## 🎯 Governance Philosophy
-
-**Birkin treats agent infrastructure like clinical systems:**
-
-- **Append-only audit logs** — every action is written once, cryptographically ordered, never modified
-- **Reproducible behavior** — git-versioned SKILL.md means you can always `git log` and `git diff` the agent's decision-making
-- **Drift detection** — weekly cosine similarity benchmarks catch behavior changes before they cascade
-- **Server-authoritative timestamps** — UTC from server clock, no client trust
-- **Automated compliance** — one command proves governance integrity
-- **Daily backups** — encrypted 7-day retention
-
-**The thesis:** If you can govern clinical infrastructure with cryptographic proof, you can govern an AI agent the same way.
-
----
-
-## 🔒 Security & Hardening
-
-**Local mode (default):** runs on your machine, no inbound ports exposed to the internet, no API keys held by Birkin itself (your Hermes holds them).
-
-**Remote-VPS mode (optional, via `deploy.sh`):**
-- Only ports 443 (Cloudflare Tunnel) and 22 (SSH) open to the internet
-- SSH key-only auth, no password login
-- `fail2ban` bans after 3 failed SSH attempts
-- `unattended-upgrades` for daily security patches
-- Non-root user runs the services
-- API keys held in systemd env, not plain config files
-- Cloudflare WAF for DDoS protection
-- UFW firewall, explicit allow rules only
-
----
-
-## 🧠 Governance Commands
-
-From the server (SSH in or via scripts/):
-
-```bash
-# Full governance validation
-./governance-check.sh
-
-# Audit log queries
-./scripts/send_telegram_alert.py                  # last 20 actions
-./scripts/send_telegram_alert.py --today          # today only
-./scripts/send_telegram_alert.py --failed         # failed actions
-./scripts/send_telegram_alert.py --cost           # monthly cost estimate
-./scripts/send_telegram_alert.py --skill sourcing-intel  # filter by skill
-
-# Skill change history
-./scripts/skill-diff.sh                 # changes in last 7 days
-./scripts/skill-diff.sh --since 2026-05-01  # custom date
-./scripts/skill-diff.sh --skill daily-brief  # one skill
-
-# Drift detection
-./drift-check.sh                # run 5 benchmarks
-./drift-check.sh --update-baseline  # save as new baseline
-
-# Kill switches
-./agent-stop.sh                 # graceful shutdown
-./agent-lockdown.sh             # network lockdown
-./agent-lockdown.sh --unlock    # restore normal
-```
-
----
-
-## 📡 Health Endpoint
-
-Birkin exposes a JSON governance status on port 9999:
-
-```bash
-curl https://health.birkin.yourdomain.com/health
-```
-
-Response:
 ```json
 {
   "agent_status": "healthy",
   "uptime_seconds": 432891,
-  "last_action_timestamp": "2026-05-18T09:23:00Z",
-  "skill_count": 6,
   "audit_log_entries": 1427,
-  "drift_check_last_run": "2026-05-18T06:00:00Z",
   "drift_check_status": "PASS",
-  "governance_check_last_run": "2026-05-18T08:15:00Z",
   "governance_check_status": "INTACT"
 }
 ```
 
-Parse this in your monitoring, dashboards, or Telegram bots.
+---
+
+## Governance Commands Reference
+
+```bash
+./governance-check.sh                          # full 5-gate check
+./drift-check.sh                               # behavioral drift check
+./agent-stop.sh                                # graceful shutdown
+./agent-lockdown.sh                            # network lockdown
+./scripts/skill-diff.sh                        # skill changes last 7 days
+./scripts/skill-diff.sh --since 2026-05-01     # custom date range
+```
 
 ---
 
-## 🤝 Contributing
+## Threat Model
 
-Want to add a skill? Fork the repo and submit a PR.
+See [THREAT_MODEL.md](THREAT_MODEL.md) for a complete description of:
+- What attacks the hash chain catches
+- What it explicitly does not catch
+- Verification methodology
+- Known limitations
 
-**Skill contribution checklist:**
+---
+
+## Contributing
+
+Skill contribution checklist:
 - [ ] SKILL.md follows template (YAML frontmatter + Markdown body)
-- [ ] Includes `failure_recovery_steps` section
+- [ ] Includes `failure_recovery_steps`
 - [ ] Tested locally (`hermes run --skill your-skill`)
-- [ ] Skill version bumped (semantic versioning)
-- [ ] Git commit with clear message
+- [ ] Version bumped (semantic versioning)
 - [ ] Governance check passes (`./governance-check.sh`)
 
-**Community skills roadmap:**
-- [ ] Slack integration for alerts
-- [ ] Notion page automation
-- [ ] LinkedIn job tracker
-- [ ] GitHub PR reviewer
-- [ ] Stripe revenue dashboard
+---
+
+## Documentation
+
+- [THREAT_MODEL.md](THREAT_MODEL.md) — what the chain catches and what it doesn't
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to add skills
+- [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) — annotated skill template
+- [deploy.sh](deploy.sh) — Hetzner + Cloudflare Tunnel (read VERIFY notices first)
 
 ---
 
-## 📚 Documentation
+## License
 
-- [deploy.sh](deploy.sh) — Hetzner + Cloudflare Tunnel deployment script (read the VERIFY notices before running)
-- [CONTRIBUTING.md](CONTRIBUTING.md) — how to add skills and contribute
-- [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) — well-commented skill template
-- [SOCIAL.md](SOCIAL.md) — X thread templates and marketing copy
+MIT — see [LICENSE](LICENSE)
 
----
-
-## 🎯 Next Steps
-
-1. **Install** (1 minute)
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
-   ```
-
-2. **Prove it works** (5 seconds)
-   ```bash
-   ./tests/tamper-test.sh
-   ```
-
-3. **Add to iPhone** (1 minute)
-   - Safari → `http://<your-machine>:3000` → Share → Add to Home Screen
-
-4. **Write your own skill** (30 minutes)
-   - Drop a `SKILL.md` into your Hermes skills directory ([spec](https://hermes-agent.nousresearch.com/docs/skills/))
-   - Restart Hermes — it auto-discovers
-   - Verify with `./governance-check.sh`
-
-5. **Optional: deploy to VPS for remote PWA access**
-   - See [`deploy.sh`](deploy.sh) — read the VERIFY notices first
-
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE)
-
-**Use it. Fork it. Build on it. Ship it.**
-
----
-
-## 🙏 Built By
-
-**Nick** — [@NickAiNYC](https://github.com/NickAiNYC)
-
-Birkin is the open-source foundation. If you're running governed infrastructure in the wild, let me know.
-
----
-
-<div align="center">
-
-**⭐ If you believe AI agents should be governed like production systems, star this repo.**
-
-**🍴 If you're adding a skill, fork and PR.**
-
-**🐦 If this changes how you think about agent safety, tweet [@NickAiNYC](https://x.com/nickaltstein).**
-
-</div>
+Built by **Nick** — [@NickAiNYC](https://github.com/NickAiNYC)
