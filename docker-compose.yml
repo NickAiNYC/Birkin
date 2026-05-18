@@ -77,7 +77,7 @@ services:
       AUDIO_STT_OPENAI_API_BASE_URL: "http://hermes:8686/v1"
     volumes:
       - webui-data:/app/backend/data
-      - ./assets/birkin-icon.png:/app/backend/data/logo.png:ro  # Custom Birkin branding
+      - ./assets/birkin-icon.png:/app/public/logo.png:ro  # Custom branding (public path avoids volume shadow)
     ports:
       - "3000:8080"
     depends_on:
