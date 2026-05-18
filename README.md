@@ -1,3 +1,7 @@
+<div align="center">
+  <img alt="Birkin — autonomous Hermes agent that carries its own proof of integrity" src="assets/birkin-banner.png" width="900" />
+</div>
+
 # Birkin
 
 <div align="center">
