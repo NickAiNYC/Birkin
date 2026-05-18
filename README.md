@@ -6,6 +6,8 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Governance](https://img.shields.io/badge/governance-5%2F5%20gates%20passing-brightgreen)
+![Audit](https://img.shields.io/badge/audit-SHA--256%20chained-0A2540)
+![Tamper](https://img.shields.io/badge/tamper--test-passing-brightgreen)
 ![Cost](https://img.shields.io/badge/cost-%E2%82%AC13%2Fmo-brightgreen)
 ![iPhone Ready](https://img.shields.io/badge/control-iPhone%20PWA-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -66,11 +68,43 @@ Output:
 
 ---
 
+## 🛡️ The Tamper Test (Don't Take My Word For It)
+
+Most "audit logs" are append-only by convention. Birkin's audit log is **hash-chained at the row level** — every row carries `SHA-256(prev_hash || payload)`. Mutate a single byte and the next verification fails.
+
+Two layers of defense:
+1. **SQLite triggers** block `UPDATE` and `DELETE` on `audit_log` at the database layer.
+2. **Hash chain** catches mutation even when an attacker bypasses the triggers via file-level access.
+
+Prove it yourself in 5 seconds:
+
+```bash
+./tests/tamper-test.sh
+```
+
+```text
+🧪 Birkin tamper-detection test
+[1/6] ✅ schema initialized (table + triggers)
+[2/6] ✅ appended 5 hash-chained rows
+[3/6] ✅ clean chain verifies PASS
+[4/6] ✅ trigger blocks UPDATE (append-only enforced at DB layer)
+[5/6] 🔓 simulated attacker: dropped triggers, rewrote row 3
+[6/6] ✅ tamper DETECTED by hash chain:
+       ❌ CHAIN BROKEN at row 3 (row_tampered)
+          row_hash mismatch (expected ad2548c43ed6..., got 9f1894ea0f03...)
+
+🛡️  PASS — Birkin's audit chain catches mutation even when triggers are bypassed.
+```
+
+Source: [`scripts/audit-init.sql`](scripts/audit-init.sql) · [`scripts/audit-append.py`](scripts/audit-append.py) · [`scripts/verify-chain.py`](scripts/verify-chain.py) · [`tests/tamper-test.sh`](tests/tamper-test.sh)
+
+---
+
 ## Why This Matters
 
 | Problem | Existing Agents | Birkin |
 |---------|-----------------|--------|
-| **Auditability** | "Trust me, I logged it" | Append-only SQLite. Every action. Never modified. Monotonic timestamps. |
+| **Auditability** | "Trust me, I logged it" | **SHA-256 hash-chained SQLite.** Every row links to the previous. Mutate one byte → chain breaks → CI fails. Proven by `tests/tamper-test.sh`. |
 | **Reproducibility** | Weights shift randomly | Git-versioned SKILL.md files. `git diff` the agent's brain. |
 | **Behavior Drift** | Degrades silently | Weekly cosine similarity checks. Flags if < 0.85. |
 | **Cost** | $100-300/mo (Claude API + infra) | €13/mo (Hetzner) + ~$5-20/mo API usage |

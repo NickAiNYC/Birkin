@@ -135,6 +135,24 @@ else
     # Entry count
     ENTRY_COUNT=$(sqlite3 "$AUDIT_DB" "SELECT COUNT(*) FROM audit_log;" 2>/dev/null || echo "0")
     vlog "Total audit entries: $ENTRY_COUNT"
+
+    # Hash-chain verification (cryptographic tamper detection)
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    VERIFY="$SCRIPT_DIR/scripts/verify-chain.py"
+    if [[ -f "$VERIFY" ]]; then
+        if CHAIN_OUT=$(python3 "$VERIFY" --db "$AUDIT_DB" --json 2>/dev/null) \
+                && echo "$CHAIN_OUT" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin)["ok"] else 1)'; then
+            ROWS=$(echo "$CHAIN_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["rows_verified"])')
+            MS=$(echo "$CHAIN_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["elapsed_ms"])')
+            check_pass "Hash chain intact: $ROWS rows verified in ${MS}ms (SHA-256)"
+        else
+            BROKEN=$(echo "$CHAIN_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("broken_at_row","?"))' 2>/dev/null || echo "?")
+            check_fail "Hash chain BROKEN at row $BROKEN — tamper detected" \
+                "Investigate: python3 scripts/verify-chain.py --db $AUDIT_DB"
+        fi
+    else
+        check_warn "verify-chain.py not found — chain verification skipped"
+    fi
 fi
 
 # ════════════════════════════════════════════════════════════════════════════

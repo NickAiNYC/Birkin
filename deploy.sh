@@ -507,28 +507,9 @@ skills:
   auto_discover: true
 CONFIG
 
-echo "[HERMES] Initializing audit database schema..."
-sqlite3 ~/.hermes/audit.db <<'SQL'
-CREATE TABLE IF NOT EXISTS audit_log (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp        INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    created_at       INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    modified_at      INTEGER,
-    skill            TEXT    NOT NULL DEFAULT 'unknown',
-    action_summary   TEXT,
-    success          INTEGER NOT NULL DEFAULT 1 CHECK (success IN (0, 1)),
-    tokens_consumed  INTEGER NOT NULL DEFAULT 0,
-    cost_usd         REAL    NOT NULL DEFAULT 0.0,
-    error_message    TEXT,
-    session_id       TEXT,
-    model_used       TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
-CREATE INDEX IF NOT EXISTS idx_audit_skill     ON audit_log(skill);
-CREATE INDEX IF NOT EXISTS idx_audit_success   ON audit_log(success);
-SQL
-echo "[HERMES] audit.db schema initialized"
+echo "[HERMES] Initializing hash-chained audit database schema..."
+sqlite3 ~/.hermes/audit.db < "$(dirname "$0")/scripts/audit-init.sql"
+echo "[HERMES] audit.db schema initialized (append-only triggers + SHA-256 chain)"
 
 # Initialise skills git repo
 cd ~/.hermes/skills
