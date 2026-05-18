@@ -216,6 +216,11 @@ docker compose exec hermes ./governance-check.sh
 
 ## 🚀 Deploy Birkin in 10 Minutes
 
+> **Note:** The local Docker quickstart below is the fully supported launch path. 
+> The Hetzner deploy script (`deploy.sh`) contains VERIFY notes that require
+> manual confirmation of Hermes install URLs and model slugs before production use.
+> See [deploy.sh](deploy.sh) comments for details.
+
 ### What You Need
 
 - **Hetzner account** (€4.51/mo for CX22 server)

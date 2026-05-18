@@ -1,0 +1,17 @@
+name: Governance Tamper Test
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  tamper-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tamper test
+        run: bash tamper-test.sh
+      - name: Run governance check
+        run: bash governance-check.sh
