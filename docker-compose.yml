@@ -31,7 +31,7 @@ services:
       HERMES_PORT: "8686"
       OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in your environment}"
       HERMES_MODEL: "anthropic/claude-sonnet-4"
-      HERMES_FALLBACK_MODEL: "anthropic/claude-haiku-4-5"
+      HERMES_FALLBACK_MODEL: "anthropic/claude-haiku-4.5"
       HERMES_SKILLS_DIR: "/app/skills"
       HERMES_AUDIT_DB: "/data/audit.db"
       HERMES_DRIFT_DIR: "/data/drift"
@@ -39,7 +39,7 @@ services:
       TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
       # Cost optimization: route cheap tasks to Gemini Flash
       HERMES_PROVIDER_ROUTING: "sort:price"
-      HERMES_AUX_MODEL: "google/gemini-flash-1.5"
+      HERMES_AUX_MODEL: "google/gemini-2.5-flash"
     volumes:
       - ./skills:/app/skills:ro          # Your SKILL.md files (read-only — edit on host)
       - ./scripts:/app/scripts:ro        # Governance scripts (read-only)

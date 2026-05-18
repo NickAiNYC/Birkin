@@ -473,14 +473,14 @@ provider_routing:
 # VERIFY: These model slugs at https://openrouter.ai/models
 models:
   primary:   "anthropic/claude-sonnet-4"
-  fallback1: "anthropic/claude-haiku-4"
-  fallback2: "google/gemini-flash-1.5"
+  fallback1: "anthropic/claude-haiku-4.5"
+  fallback2: "google/gemini-2.5-flash"
 
 auxiliary_models:
-  session_title:       "google/gemini-flash-1.5"
-  context_compression: "google/gemini-flash-1.5"
-  web_summarization:   "google/gemini-flash-1.5"
-  vision_analysis:     "anthropic/claude-haiku-4"
+  session_title:       "google/gemini-2.5-flash"
+  context_compression: "google/gemini-2.5-flash"
+  web_summarization:   "google/gemini-2.5-flash"
+  vision_analysis:     "anthropic/claude-haiku-4.5"
 
 platforms:
   api_server:
