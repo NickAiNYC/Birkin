@@ -132,4 +132,4 @@ def health_detailed():
 if __name__ == "__main__":
     print(f"[Health Endpoint] Starting on port {HEALTH_PORT}")
     # Use threaded=True for concurrent health checks
-    app.run(host="127.0.0.1", port=HEALTH_PORT, threaded=True)
+    app.run(host="0.0.0.0", port=HEALTH_PORT, threaded=True)
