@@ -515,22 +515,7 @@ Want to add a skill? Fork the repo and submit a PR.
 - [deploy.sh](deploy.sh) — Hetzner + Cloudflare Tunnel deployment script (read the VERIFY notices before running)
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to add skills and contribute
 - [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) — well-commented skill template
-- [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — 60-second demo recording script
 - [SOCIAL.md](SOCIAL.md) — X thread templates and marketing copy
-
----
-
-## 🎬 60-Second Demo
-
-Record this on your iPhone. No editing needed.
-
-1. **0:00–0:10** — Open Safari → `https://birkin.yourdomain.com` → tap microphone
-2. **0:10–0:25** — Voice: *"Run sourcing intelligence and report new suppliers this week"*
-3. **0:25–0:40** — Agent streams Markdown results (suppliers, veto scores, actions)
-4. **0:40–0:50** — Open `health.birkin.yourdomain.com/health` → show JSON governance status
-5. **0:50–0:60** — SSH to server → `./governance-check.sh` → show "✅ GOVERNANCE INTACT"
-
-[Full script →](DEMO_SCRIPT.md)
 
 ---
 
