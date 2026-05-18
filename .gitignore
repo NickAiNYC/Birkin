@@ -22,6 +22,11 @@ data/
 .DS_Store
 Thumbs.db
 
+# iCloud conflict copies (macOS)
+* 2.*
+* 3.*
+* 4.*
+
 # Python
 __pycache__/
 *.pyc

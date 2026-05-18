@@ -35,7 +35,7 @@ Most AI agents are black boxes. You don't know what they did, when, or why. Birk
 iPhone (Safari PWA + Telegram)
   → Cloudflare Tunnel (free tier, no open ports)
     → Hetzner CX22 (€4.51/mo, Ubuntu 24.04)
-      → Hermes v0.13.0 (port 8686) + Open WebUI (Docker, port 3000)
+      → Hermes v0.14.0 (port 8686) + Open WebUI (Docker, port 3000)
         → OpenRouter API (Claude Sonnet 4 + Haiku fallback)
           → Governance Layer:
               audit-log.sh     (SQLite append-only)
@@ -101,7 +101,7 @@ Not just controlled from an iPhone — the agent can be interrogated from an iPh
 - Lines in governance-check.sh: 284
 - Cosine similarity drift threshold: 0.85
 - Audit log: append-only SQLite, monotonic timestamps
-- Hermes version: v0.13.0 "Tenacity"
+- Hermes version: v0.14.0
 
 ---
 

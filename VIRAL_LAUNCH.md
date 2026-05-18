@@ -121,7 +121,7 @@ Cryptographic proof. Every hour.
 
 **4. Email to Hermes maintainers (optional)**
 - If you know them, let them know Birkin exists
-- Show how it's showcasing Hermes v0.13.0 in production
+- Show how it's showcasing Hermes v0.14.0 in production
 
 ---
 

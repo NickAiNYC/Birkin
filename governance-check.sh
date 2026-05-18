@@ -37,7 +37,7 @@ WARN=0
 START_TIME=$(date +%s)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-vlog() { [[ "$VERBOSE" == true ]] && echo "       $*"; }
+vlog() { [[ "$VERBOSE" == true ]] && echo "       $*" || true; }
 
 check_pass() {
     echo "  ✅ $1"
@@ -180,8 +180,9 @@ else
             "cd $SKILLS_DIR && git init && git add -A && git commit -m 'Initial skill set'"
     fi
 
-    # Skill count
-    SKILL_COUNT=$(ls "$SKILLS_DIR"/*.md 2>/dev/null | wc -l)
+    # Skill count — supports both v0.13 flat layout (skills/*.md) and
+    # v0.14+ subdirectory layout (skills/*/SKILL.md)
+    SKILL_COUNT=$(find "$SKILLS_DIR" -maxdepth 2 \( -name "SKILL.md" -o -name "*.md" \) 2>/dev/null | wc -l || echo 0)
     if [[ "$SKILL_COUNT" -ge 5 ]]; then
         check_pass "$SKILL_COUNT skills deployed (minimum 5 required)"
     elif [[ "$SKILL_COUNT" -gt 0 ]]; then
@@ -194,9 +195,9 @@ else
     MISSING_VERSION=0
     MISSING_DESC=0
     MISSING_RECOVERY=0
-    for f in "$SKILLS_DIR"/*.md; do
+    for f in $(find "$SKILLS_DIR" -maxdepth 2 \( -name "SKILL.md" -o -name "*.md" \) 2>/dev/null); do
         [[ -f "$f" ]] || continue
-        fname="$(basename "$f")"
+        fname="$(basename "$(dirname "$f")")/$(basename "$f")"
         grep -q "^version:" "$f"     || { MISSING_VERSION=$((MISSING_VERSION+1)); vlog "MISSING version: $fname"; }
         grep -q "^description:" "$f" || { MISSING_DESC=$((MISSING_DESC+1));    vlog "MISSING description: $fname"; }
         grep -q "failure_recovery" "$f" || { MISSING_RECOVERY=$((MISSING_RECOVERY+1)); vlog "MISSING failure_recovery_steps: $fname"; }
