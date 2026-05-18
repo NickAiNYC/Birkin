@@ -330,18 +330,20 @@ hermes run --skill my-skill
 
 ---
 
-## 📊 The 5 Shipped Skills
+## 📊 Example Skills
+
+The repo ships **6 SKILL.md files** I actually run on my own Birkin — useful as templates more than turnkey features (your sourcing, your calendar, your services are different). Drop them into your Hermes `~/.hermes/skills/` directory and edit, or write your own following the [official Hermes SKILL.md spec](https://hermes-agent.nousresearch.com/docs/skills/).
 
 | Skill | Purpose | Trigger | Schedule |
 |-------|---------|---------|----------|
 | **daily-brief** | Morning intelligence (emails, calendar, sourcing, health, news, priority) | Manual or cron | 7 AM ET daily |
 | **sourcing-intel** | Search 1688 + Korean suppliers for new products | Manual or cron | Monday 8 AM ET |
 | **competitor-monitor** | Track NYC aesthetic clinics for website/pricing changes | Manual or cron | Sunday 5 PM ET |
-| **directora-health** | Check Directora API, ledger integrity, Prometheus metrics | Manual or cron | Every 6 hours |
+| **directora-health** | Health-check pattern against a separate service of mine (see [Directora](https://scrutexity.com)) — useful as a template for any external API health skill | Manual or cron | Every 6 hours |
 | **code-governance** | Post-push validation: tests, contracts, locks, scripts | Webhook or manual | On git push to main |
-| **send-telegram-alert** | Telegram alerting for audit events, failures, cost reports | Manual or triggered | On audit events |
+| **send-telegram-alert** | Telegram alerting helper for audit events, failures, cost reports | Manual or triggered | On audit events |
 
-All skills include Telegram alerting, error recovery, and audit logging.
+All include Telegram alerting hooks, error recovery, and audit logging.
 
 ---
 
