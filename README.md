@@ -44,6 +44,54 @@ Then open `http://localhost:3000` in Safari on your iPhone → **Share → Add t
 
 ---
 
+## How to Get Your Hermes API Key
+
+This is the `API_SERVER_KEY` in your Hermes config — **not** your DeepSeek, OpenRouter, or Anthropic key. Generate a separate one.
+
+**1. Check if you already have one:**
+
+```bash
+grep API_SERVER_KEY ~/.hermes/.env
+```
+
+If it prints a value, you're done — use that as `HERMES_API_KEY` in Birkin's `.env`.
+
+**2. If missing, generate one:**
+
+```bash
+echo "API_SERVER_KEY=$(openssl rand -hex 16)" >> ~/.hermes/.env
+```
+
+**3. Enable the API server in Hermes config:**
+
+Open `~/.hermes/config.yaml` and confirm this block exists:
+
+```yaml
+platforms:
+  api_server:
+    enabled: true
+    port: 8686
+```
+
+**4. Restart Hermes:**
+
+```bash
+hermes gateway start
+```
+
+**5. Verify it works:**
+
+```bash
+source ~/.hermes/.env
+curl http://localhost:8686/health -H "Authorization: Bearer $API_SERVER_KEY"
+```
+
+You should get `{"status": "ok"}`. If you get 401, the key in `.env` doesn't match what Hermes loaded — restart Hermes and retry.
+
+> **Never reuse a model provider key** (DeepSeek, OpenRouter, Anthropic, etc.) as your `API_SERVER_KEY`. Generate a dedicated one with the command above.
+
+---
+
 ## What Birkin ships
 
 - 📱 **Open WebUI** configured to talk to *your* Hermes — installable as an iPhone PWA
