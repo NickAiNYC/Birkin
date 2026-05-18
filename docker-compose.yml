@@ -17,6 +17,24 @@
 
 services:
 
+  # ─── nginx (PWA gateway) ─────────────────────────────────────────────────────
+  # Injects Apple meta tags into every HTML response via sub_filter so
+  # "Add to Home Screen" gives a full-screen app with no Safari chrome.
+  # Also serves manifest.json and PWA icons from ./static/.
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: birkin-nginx
+    restart: unless-stopped
+    ports:
+      - "${BIRKIN_PORT:-3000}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/usr/share/nginx/html/static:ro
+    depends_on:
+      - open-webui
+    networks:
+      - birkin
+
   # ─── Open WebUI ─────────────────────────────────────────────────────────────
   # iPhone-friendly chat UI with voice input. PWA-installable.
   # Talks to your existing Hermes over its OpenAI-compatible /v1 endpoint.
@@ -28,7 +46,7 @@ services:
       OPENAI_API_BASE_URL: "${HERMES_URL:-http://host.docker.internal:8686}/v1"
       OPENAI_API_KEY: "${HERMES_API_KEY:-hermes-local}"
       WEBUI_NAME: "Birkin"
-      WEBUI_URL: "http://localhost:3000"
+      WEBUI_URL: "http://localhost:${BIRKIN_PORT:-3000}"
       ENABLE_SIGNUP: "false"
       ENABLE_LOGIN_FORM: "true"
       ENABLE_RAG_WEB_SEARCH: "true"
@@ -39,8 +57,8 @@ services:
     volumes:
       - webui-data:/app/backend/data
       - ./assets/birkin-icon.png:/app/public/logo.png:ro
-    ports:
-      - "3000:8080"
+    expose:
+      - "8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"   # Linux compatibility for host.docker.internal
     networks:
