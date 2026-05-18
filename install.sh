@@ -13,10 +13,10 @@
 # Hermes docs: https://hermes-agent.nousresearch.com/
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/master/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
 #
 # Or with a custom Hermes URL:
-#   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/master/install.sh \
+#   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh \
 #     | HERMES_URL=http://192.168.1.50:8686 bash
 # =============================================================================
 set -euo pipefail

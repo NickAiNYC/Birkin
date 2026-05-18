@@ -26,7 +26,7 @@ Already running [Hermes Agent](https://hermes-agent.nousresearch.com/)? Point Bi
 ## ⚡ One-command install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
 ```
 
 Or if you don't trust pipe-to-bash (you shouldn't, but the script is 100 lines you can read first):
