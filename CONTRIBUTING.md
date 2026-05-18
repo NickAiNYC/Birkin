@@ -1,143 +1,84 @@
 # Contributing to Birkin
 
-Want to add your own skill? It's 30 minutes. Here's how.
+Skills are the only thing worth contributing. Everything else is personal config.
 
 ---
 
-## The Skill Marketplace
+## Adding a Skill
 
-Birkin ships with 5 production skills. We're building a community-driven marketplace.
-
-**Wanted community skills:**
-- [ ] Slack integration (post updates to Slack)
-- [ ] Notion automation (log results to Notion)
-- [ ] LinkedIn job tracker (monitor job postings)
-- [ ] GitHub PR reviewer (automated code review)
-- [ ] Stripe revenue dashboard (daily summary)
-- [ ] Email summarizer (digest newsletters)
-- [ ] Calendar optimizer (identify meeting overload)
-- [ ] Competitor pricing tracker (monitor SaaS pricing)
-- [ ] Hacker News alerts (monitor industry discussions)
-
----
-
-## How to Add a Skill (30 minutes)
-
-### Step 1: Clone the repo (2 min)
+### 1. Fork and clone
 
 ```bash
-git clone https://github.com/NickAiNYC/birkin.git
-cd birkin
+git clone https://github.com/NickAiNYC/Birkin.git && cd Birkin
 ```
 
-### Step 2: Create your SKILL.md (10 min)
+### 2. Create your skill file
 
 ```bash
-cat > skills/my-skill.md <<'SKILL'
+cp SKILL_TEMPLATE.md skills/your-skill-name.md
+```
+
+Fill in the YAML frontmatter:
+
+```yaml
 ---
-name: my-skill
-description: Brief description of what this skill does
+name: your-skill-name
+description: What it does and when to trigger it
 version: 1.0.0
 triggers:
-  - cron: "0 9 * * *"
-    description: Daily at 9 AM UTC
+  - cron: "0 9 * * *"   # optional
   - manual
 tools_needed:
   - web_search
   - file_write
 failure_recovery_steps:
-  - "Check API connectivity: curl https://api.example.com"
-  - "Verify credentials in ~/.hermes/.env"
-  - "Re-run: hermes run --skill my-skill"
+  - "If X fails, check Y"
+  - "Manually trigger: hermes run --skill your-skill-name"
 ---
-
-# My Skill
-
-## Overview
-What does this skill do? (2-3 sentences)
-
-## Execution
-1. Step one
-2. Step two
-3. Deliver results
-
-## Delivery
-Where do results go? (Telegram, file, etc.)
-
-## Error Handling
-- If X fails, do Y
-- If Z fails, do W
-SKILL
 ```
 
-### Step 3: Test it locally (10 min)
+### 3. Write the skill body
+
+Clear numbered steps. Assume the agent needs explicit instructions — no hand-waving.
+
+### 4. Test it
 
 ```bash
-hermes run --skill my-skill
-./scripts/governance-check.sh  # Should pass 9/9 gates
+hermes run --skill your-skill-name
 ```
 
-### Step 4: Submit PR (5 min)
+### 5. Run governance gates (all 5 must pass)
 
 ```bash
-git add skills/my-skill.md
-git commit -m "Add my-skill v1.0.0 — [brief description]"
-git push origin main
+./governance-check.sh
 ```
 
-Open a PR with this template:
+### 6. Submit a PR
 
-```
-## Skill: my-skill v1.0.0
-
-### What it does
-[One sentence]
-
-### Governance
-- Triggers: [cron / manual]
-- Tools: [list]
-- Error recovery: [yes/no]
-- Gates passing: ✅ 9/9
-
-### Testing
-- [x] Tested locally
-- [x] governance-check.sh passes
-- [x] Ready to ship
-```
+One skill per PR. Include what the skill does and the `governance-check.sh` output.
 
 ---
 
-## Governance Checklist
+## Skill ideas (things I'd actually use)
 
-- [ ] Skill has YAML frontmatter (name, description, version, triggers, tools_needed, failure_recovery_steps)
-- [ ] Skill has clear overview + execution steps
-- [ ] No hardcoded secrets (use ~/.hermes/.env)
-- [ ] Error handling covers ≥2 failure scenarios
-- [ ] ./scripts/governance-check.sh passes 9/9
-- [ ] Git commit message is clear
-- [ ] No uncommitted changes
-
----
-
-## Review Criteria
-
-We merge if:
-1. ✅ Governance compliant
-2. ✅ Error handling documented
-3. ✅ Adds value beyond the 5 shipped skills
-4. ✅ All gates passing
+- Slack message summarizer
+- Notion page creator
+- LinkedIn job tracker
+- GitHub PR reviewer
+- Stripe revenue daily summary
+- Email draft responder
+- Calendar prep (next-meeting briefing)
+- Weather + commute alert
+- Hacker News thread monitor
+- Crypto portfolio snapshot
 
 ---
 
-## Questions?
+## What gets merged
 
-Open an issue: [github.com/NickAiNYC/birkin/issues](https://github.com/NickAiNYC/birkin/issues)
+1. Governance-compliant YAML frontmatter
+2. At least two documented failure recovery steps
+3. All 5 gates passing (`./governance-check.sh`)
+4. Adds a skill that isn't already shipped
 
-Or tweet [@NickAiNYC](https://x.com/NickAiNYC)
-
----
-
-**Every shipped skill makes Birkin stronger.**
-
-⭐ Star this repo if you believe in agent governance.
-
+Questions: open an issue or tweet [@NickAiNYC](https://x.com/NickAiNYC).
