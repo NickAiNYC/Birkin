@@ -15,7 +15,7 @@
 
 ![Governance](https://img.shields.io/badge/governance-5%2F5%20gates%20passing-brightgreen)
 ![Audit](https://img.shields.io/badge/audit-SHA--256%20chained-0A2540)
-![Tamper Test](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml/badge.svg)
+[![Tamper Test](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml/badge.svg)](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml)
 
 Already running [Hermes Agent](https://hermes-agent.nousresearch.com/)? Point Birkin at it and get an **iPhone PWA**, **hash-chained audit log**, **drift detection**, and **kill switches** — without modifying your Hermes install.
 
