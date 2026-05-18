@@ -127,7 +127,7 @@ Source: [`scripts/audit-init.sql`](scripts/audit-init.sql) · [`scripts/audit-ap
 | **Auditability** | "Trust me, I logged it" | **SHA-256 hash-chained SQLite.** Every row links to the previous. Mutate one byte → chain breaks → CI fails. Proven by `tests/tamper-test.sh`. |
 | **Reproducibility** | Weights shift randomly | Git-versioned SKILL.md files. `git diff` the agent's brain. |
 | **Behavior Drift** | Degrades silently | Weekly cosine similarity checks. Flags if < 0.85. |
-| **Cost** | $100-300/mo (Claude API + infra) | €13/mo (Hetzner) + ~$5-20/mo API usage |
+| **Cost** | $100-300/mo (Claude API + infra) | **Free.** Birkin itself costs nothing. Your only spend is whatever your Hermes already uses for LLM calls. |
 | **Control Surface** | Laptop SSH or web dashboard | iPhone PWA. Voice input. Telegram alerts. |
 | **Safety Bounds** | Hope | 5-gate governance validation. Kill switches. Lockdown mode. |
 
@@ -157,54 +157,37 @@ Each gate is cryptographic. Failure stops the agent and alerts you immediately.
 
 ## Architecture
 
+Birkin sits **between you and your existing Hermes Agent**. You bring Hermes; Birkin adds the iPhone control surface and the governance layer.
+
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                              YOUR iPHONE                                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                     │
-│  │  Safari PWA  │  │  Voice Input │  │  Telegram    │                     │
-│  │  (Add to HS) │  │  (Open WebUI)│  │   Alerts     │                     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘                     │
-└─────────┼──────────────────┼──────────────────┼─────────────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌────────────────────────────────────────────────────────────────────────────┐
-│                       CLOUDFLARE TUNNEL (Free)                             │
-│           DDoS Protection · Custom Domain · Zero Open Ports                │
-└──────────────────────────────┬──────────────────────────────────────────────┘
-                               │
-                               ▼
-┌────────────────────────────────────────────────────────────────────────────┐
-│              HETZNER CX22 (€4.51/mo) + OpenRouter API (~$5-20)            │
-│  ┌─────────────────────┐    ┌─────────────────┐    ┌─────────────────┐   │
-│  │  Hermes v0.13.0     │◄──▶│  Open WebUI     │    │  Health         │   │
-│  │  (Agent Engine)     │    │  (Docker)       │    │  Endpoint       │   │
-│  │  Port 8686          │    │  Port 3000      │    │  Port 9999      │   │
-│  │                     │    │                 │    │  /health        │   │
-│  │ • Claude Sonnet 4   │    │ • Mobile PWA    │    │ • Governance    │   │
-│  │ • Haiku (fallback)  │    │ • Voice Calls   │    │   Status JSON   │   │
-│  │ • SKILL.md Loop     │    │ • RAG + Tools   │    │ • Uptime        │   │
-│  │ • SQLite Audit.db   │    │ • Admin Panel   │    │ • Last Action   │   │
-│  └─────────────────────┘    └─────────────────┘    └─────────────────┘   │
-│                                                                            │
-│  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │                    GOVERNANCE LAYER (284 Lines)                     │   │
-│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │   │
-│  │  │ audit-log.sh │ │ skill-diff.sh│ │drift-check.sh│ governance- │   │
-│  │  │ (SQLite)     │ │ (Git)        │ │ (JSON)       │ check.sh    │   │
-│  │  └──────────────┘ └──────────────┘ └──────────────┘              │   │
-│  │  • Append-only    • Skill tracking  • Behavior gates   • Master   │   │
-│  │  • Timestamps     • Version diffs   • Cosine sim ≥0.85│ validation│   │
-│  │  • No rewrites    • Git commits     • Weekly benchmarks           │   │
-│  └────────────────────────────────────────────────────────────────────┘   │
-│                                                                            │
-│  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │                         SKILLS (6 Deployed)                        │   │
-│  │  daily-brief • sourcing-intel • competitor-monitor                │   │
-│  │  directora-health • code-governance • send-telegram-alert          │   │
-│  │  Each: YAML frontmatter + cron schedule + failure recovery         │   │
-│  └────────────────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────────────┘
+                      ┌─────────────────────┐
+                      │  YOUR HERMES AGENT  │   ← you already run this
+                      │  (anywhere, any host)│      (Nous Research)
+                      └──────────┬──────────┘
+                                 │
+                                 │  OpenAI-compatible /v1
+                                 ▼
+        ┌────────────────────────────────────────────────┐
+        │                BIRKIN (this repo)              │
+        │  ┌──────────────────┐   ┌────────────────────┐ │
+        │  │  Open WebUI      │   │  Governance Layer  │ │
+        │  │  (Docker)        │   │                    │ │
+        │  │  • iPhone PWA    │   │  • SHA-256 audit   │ │
+        │  │  • Voice input   │   │    chain           │ │
+        │  │  • Custom logo   │   │  • Drift detection │ │
+        │  └──────────────────┘   │  • Kill switches   │ │
+        │  ┌──────────────────┐   │  • 5 gates         │ │
+        │  │  Health Endpoint │◄──┤  • Tamper test     │ │
+        │  │  /health JSON    │   │  • Telegram alerts │ │
+        │  └──────────────────┘   └────────────────────┘ │
+        └────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+                        📱  YOUR iPHONE
+                   (Safari → Add to Home Screen)
 ```
+
+Everything runs on your machine by default. Optional: deploy to a remote VPS with Cloudflare Tunnel if you want PWA access from outside your LAN — see [`deploy.sh`](deploy.sh).
 
 ---
 
@@ -389,18 +372,21 @@ Blocks all arbitrary HTTP calls. Blocks `web_research` tool (intentionally).
 
 ---
 
-## 💰 Cost Breakdown
+## 💰 Cost
 
-| Service | Monthly | Why |
-|---------|---------|-----|
-| Hetzner CX22 | €4.51 | 2 vCPU, 4 GB RAM, 40 GB SSD, Ubuntu 24.04 |
-| Cloudflare Tunnel | $0 | Free tier, unlimited bandwidth |
-| Domain | ~€1 | Cloudflare registrar (or BYOD) |
-| OpenRouter API | $5-20 | Claude Sonnet (primary), Haiku/Gemini Flash (fallback) |
-| Telegram Bot | $0 | Free |
-| **Total** | **~€13-25** | Under €20/month with smart routing |
+**Birkin itself is free.** It runs in Docker on hardware you already own.
 
-**Cost optimization:** Hermes config uses `provider_routing: sort: price` — complex tasks go to Claude Sonnet, routine tasks to Haiku. Cuts API costs 40-60%.
+Your LLM cost is whatever your Hermes Agent already spends — Birkin doesn't add any model calls.
+
+If you want PWA access from outside your LAN, the *optional* `deploy.sh` provisions:
+
+| Service | Monthly | Notes |
+|---------|---------|-------|
+| Hetzner CX22 | ~€4.51 | 2 vCPU, 4 GB RAM, 40 GB SSD |
+| Cloudflare Tunnel | $0 | Free tier |
+| Domain | optional | Use a subdomain you already own |
+
+That's the upper bound. Local-only users pay nothing.
 
 ---
 
@@ -421,14 +407,17 @@ Blocks all arbitrary HTTP calls. Blocks `web_research` tool (intentionally).
 
 ## 🔒 Security & Hardening
 
-- **No open inbound ports** — only Cloudflare Tunnel (443) and SSH (22) open
-- **SSH key-only auth** — no password login
-- **fail2ban** — bans after 3 failed SSH attempts
-- **Automatic security updates** — unattended-upgrades runs daily
-- **Non-root user** — Hermes runs as `scrutexity`, not root
-- **API keys in systemd env** — never in plain config files
-- **Cloudflare WAF** — DDoS protection, rate limiting
-- **UFW firewall** — explicit allow rules only
+**Local mode (default):** runs on your machine, no inbound ports exposed to the internet, no API keys held by Birkin itself (your Hermes holds them).
+
+**Remote-VPS mode (optional, via `deploy.sh`):**
+- Only ports 443 (Cloudflare Tunnel) and 22 (SSH) open to the internet
+- SSH key-only auth, no password login
+- `fail2ban` bans after 3 failed SSH attempts
+- `unattended-upgrades` for daily security patches
+- Non-root user runs the services
+- API keys held in systemd env, not plain config files
+- Cloudflare WAF for DDoS protection
+- UFW firewall, explicit allow rules only
 
 ---
 
@@ -523,31 +512,26 @@ Want to add a skill? Fork the repo and submit a PR.
 
 ## 🎯 Next Steps
 
-1. **Clone the repo**
+1. **Install** (1 minute)
    ```bash
-   git clone https://github.com/NickAiNYC/birkin.git
-   cd birkin
+   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
    ```
 
-2. **Try locally** (5 minutes)
+2. **Prove it works** (5 seconds)
    ```bash
-   export OPENROUTER_API_KEY=sk-or-v1-xxx
-   docker compose up -d
-   open http://localhost:3000
+   ./tests/tamper-test.sh
    ```
 
-3. **Deploy to Hetzner** (10 minutes)
-   ```bash
-   source deploy.env && ./deploy.sh --hetzner-token ... --cf-token ... --domain ... --openrouter-key ...
-   ```
+3. **Add to iPhone** (1 minute)
+   - Safari → `http://<your-machine>:3000` → Share → Add to Home Screen
 
-4. **Add to iPhone** (2 minutes)
-   - Safari → domain → Share → Add to Home Screen
+4. **Write your own skill** (30 minutes)
+   - Drop a `SKILL.md` into your Hermes skills directory ([spec](https://hermes-agent.nousresearch.com/docs/skills/))
+   - Restart Hermes — it auto-discovers
+   - Verify with `./governance-check.sh`
 
-5. **Add your own skill** (30 minutes)
-   - `~/.hermes/skills/my-skill.md`
-   - `git add && git commit`
-   - Done
+5. **Optional: deploy to VPS for remote PWA access**
+   - See [`deploy.sh`](deploy.sh) — read the VERIFY notices first
 
 ---
 
