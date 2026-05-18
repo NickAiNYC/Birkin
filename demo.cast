@@ -1,0 +1,12 @@
+{"version":3,"term":{"cols":120,"rows":30,"type":"xterm-256color","theme":{"fg":"#e6e6e6","bg":"#212733","palette":"#35424b:#b45547:#6caa71:#c4ac62:#6d96b4:#bd7bcd:#7ccbce:#dee6ec:#465c6d:#e06c5a:#79be7e:#e5c872:#67b5ed:#d389e5:#84dee1:#e6eff6"}},"timestamp":1779139746,"command":"./tests/tamper-test.sh","env":{"SHELL":"/bin/zsh"}}
+[0.071, "o", "🧪 Birkin tamper-detection test\r\n   sandbox: /var/folders/8q/xkznt5w503d4hdg9lsts95jm0000gn/T/tmp.NPvCHTotUp\r\n\r\n"]
+[0.015, "o", "[1/6] ✅ schema initialized (table + triggers)\r\n"]
+[0.147, "o", "[2/6] ✅ appended 5 hash-chained rows\r\n"]
+[0.027, "o", "[3/6] ✅ clean chain verifies PASS\r\n"]
+[0.003, "o", "[4/6] ✅ trigger blocks UPDATE (append-only enforced at DB layer)\r\n"]
+[0.004, "o", "[5/6] 🔓 simulated attacker: dropped triggers, rewrote row 3\r\n"]
+[0.027, "o", "[6/6] ✅ tamper DETECTED by hash chain:\r\n"]
+[0.002, "o", "       ❌ CHAIN BROKEN at row 3 (row_tampered)\r\n          row_hash mismatch (expected d9715a333332..., got 5f604687529a...)\r\n          Verified in 0ms\r\n"]
+[0.000, "o", "\r\n"]
+[0.000, "o", "🛡️  PASS — Birkin's audit chain catches mutation even when triggers are bypassed.\r\n"]
+[0.002, "x", "0"]
