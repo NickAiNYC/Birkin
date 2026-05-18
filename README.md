@@ -557,6 +557,6 @@ Birkin is the open-source foundation. If you're running governed infrastructure 
 
 **🍴 If you're adding a skill, fork and PR.**
 
-**🐦 If this changes how you think about agent safety, tweet [@NickAiNYC](https://x.com/NickAiNYC).**
+**🐦 If this changes how you think about agent safety, tweet [@NickAiNYC](https://x.com/nickaltstein).**
 
 </div>
