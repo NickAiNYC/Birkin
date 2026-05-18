@@ -25,6 +25,10 @@ Already running [Hermes Agent](https://hermes-agent.nousresearch.com/)? Point Bi
 
 ## ⚡ One-command install
 
+<div align="center">
+  <img alt="Birkin" src="assets/birkin-icon.png" width="140" />
+</div>
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
 ```
