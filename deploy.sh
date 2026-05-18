@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 # =============================================================================
+# ⚠️  OPTIONAL SCRIPT — most users do not need this.
+#
+# Birkin's recommended install is the one-liner in README.md, which runs the
+# control surface + governance on your existing machine for free. This script
+# is the heavyweight path: it provisions a Hetzner CX22 (~€4.51/mo) with
+# Cloudflare Tunnel so you can reach the PWA from outside your home network.
+#
+# If you just want to try Birkin locally, run:
+#   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/master/install.sh | bash
+# =============================================================================
 # Birkin — Production Deployment Script
 # Version:  1.0.0
 # Author:   Nick (@NickAiNYC)

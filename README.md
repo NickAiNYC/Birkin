@@ -6,45 +6,57 @@
 
 <div align="center">
 
-**An Autonomous Hermes Agent That Governs Itself**
+**iPhone Control + Hash-Chained Audit for Your Hermes Agent**
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Free](https://img.shields.io/badge/cost-free-brightgreen?style=for-the-badge)
+![iPhone PWA](https://img.shields.io/badge/control-iPhone%20PWA-black?style=for-the-badge)
+![One Command](https://img.shields.io/badge/install-one%20command-FF7A00?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
+
 ![Governance](https://img.shields.io/badge/governance-5%2F5%20gates%20passing-brightgreen)
 ![Audit](https://img.shields.io/badge/audit-SHA--256%20chained-0A2540)
-![Tamper](https://img.shields.io/badge/tamper--test-passing-brightgreen)
-![Cost](https://img.shields.io/badge/cost-%E2%82%AC13%2Fmo-brightgreen)
-![iPhone Ready](https://img.shields.io/badge/control-iPhone%20PWA-black)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Tamper Test](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml/badge.svg)
 
-**The first AI agent that carries its own cryptographic proof of integrity.**
-
-Governed like clinical infrastructure. Controlled from your iPhone. Running on €13/month.
-
-**A luxury autonomous agent. €13/month. Governed like clinical infrastructure. Controlled entirely from your phone.**
-
-*The first AI agent that carries its own governance — audit logs, skill versions, drift detection, and safety bounds built in, not bolted on.*
-
-[**Deploy Now →**](#-deploy-birkin-in-10-minutes) · [**Try Locally →**](#-try-it-locally-no-server) · [**Add a Skill →**](#-build-your-own-skills) · [**Read the Philosophy →**](#-why-governance-matters)
+Already running [Hermes Agent](https://hermes-agent.nousresearch.com/)? Point Birkin at it and get an **iPhone PWA**, **hash-chained audit log**, **drift detection**, and **kill switches** — without modifying your Hermes install.
 
 </div>
 
 ---
 
-## What Is Birkin?
+## ⚡ One-command install
 
-Birkin is a **self-governing autonomous agent** that runs on a €13/month Hetzner server and is controlled entirely from your iPhone.
-
-Think of it as a luxury bag that carries itself:
-- **What goes in** — skills (SKILL.md files that define agent behavior)
-- **What it carries** — audit logs (every action logged once, append-only)
-- **How it proves itself** — governance checks (5 gates that prove integrity)
-- **Where you grab it** — your iPhone (Safari PWA, voice control, Telegram alerts)
-
-It's not a chatbot wrapper. It's not a toy. It's what happens when you apply **production-grade clinical infrastructure governance** to an autonomous AI agent.
-
+```bash
+curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/master/install.sh | bash
 ```
-Your iPhone → Cloudflare Tunnel → Birkin (Hermes Agent + Governance Layer) → Skills execute → Audit logged
+
+Or if you don't trust pipe-to-bash (you shouldn't, but the script is 100 lines you can read first):
+
+```bash
+git clone https://github.com/NickAiNYC/Birkin && cd Birkin
+HERMES_URL=http://host.docker.internal:8686 docker compose up -d
 ```
+
+Then open `http://localhost:3000` in Safari on your iPhone → **Share → Add to Home Screen**.
+
+---
+
+## What Birkin ships
+
+- 📱 **Open WebUI** configured to talk to *your* Hermes — installable as an iPhone PWA
+- 🛡 **Hash-chained audit log** — SHA-256 chain, append-only triggers, tamper test passing in CI
+- 🔍 **Drift detection** — weekly cosine similarity benchmarks
+- 🛑 **Kill switches** — `agent-stop.sh`, `agent-lockdown.sh`
+- 🪪 **5-gate governance check** — process, audit, skills, drift, health
+- 📨 **Telegram alerts** (optional) on governance failure
+- 🧩 **6 example SKILL.md files** to drop into your Hermes skills directory
+
+## What Birkin does NOT ship
+
+- ❌ **Hermes Agent itself** — bring your own. See [hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/)
+- ❌ **An LLM key** — your Hermes already has one
+- ❌ **A hosted service** — runs on your machine by design (free, private, your data stays local)
+
+Runs on your laptop, a Raspberry Pi, a free-tier VPS — anywhere Docker runs. Optional `deploy.sh` provisions a Hetzner box with Cloudflare Tunnel if you want phone access from outside your LAN (~€4.51/mo for the VPS).
 
 ---
 
@@ -192,78 +204,21 @@ Each gate is cryptographic. Failure stops the agent and alerts you immediately.
 
 ---
 
-## 🧪 Try It Locally (No Server)
+## 🚀 Optional: Deploy to a remote VPS (~€4.51/mo)
 
-**Fastest way to feel Birkin without deploying.**
-
-```bash
-git clone https://github.com/NickAiNYC/birkin.git
-cd birkin
-
-export OPENROUTER_API_KEY=sk-or-v1-xxx
-
-docker compose up -d
-```
-
-Then open http://localhost:3000 in your browser. Hermes is running. Governance is live. Skills are executing.
-
-Check governance:
-```bash
-docker compose exec hermes ./governance-check.sh
-```
-
----
-
-## 🚀 Deploy Birkin in 10 Minutes
-
-> **Note:** The local Docker quickstart below is the fully supported launch path. 
-> The Hetzner deploy script (`deploy.sh`) contains VERIFY notes that require
-> manual confirmation of Hermes install URLs and model slugs before production use.
-> See [deploy.sh](deploy.sh) comments for details.
-
-### What You Need
-
-- **Hetzner account** (€4.51/mo for CX22 server)
-- **Cloudflare account** (free, for Tunnel + domain)
-- **OpenRouter API key** (~$5-20/mo, Claude Sonnet routing)
-- **A domain** (any registrar, point nameservers to Cloudflare)
-- **Telegram bot token** (optional, for alerts)
-
-### Deploy
+If you want to reach the PWA from outside your home network, [`deploy.sh`](deploy.sh) provisions a Hetzner CX22 + Cloudflare Tunnel for you. This path is **optional** — most users run Birkin locally and use Tailscale or their home network for phone access.
 
 ```bash
-git clone https://github.com/NickAiNYC/birkin.git
-cd birkin
-
-# Create environment file (never commit this)
-cat > deploy.env <<'ENV'
-HETZNER_TOKEN=hz_xxx
-CF_TOKEN=cf_xxx
-DOMAIN=birkin.yourdomain.com
-OPENROUTER_KEY=sk-or-v1-xxx
-TELEGRAM_TOKEN=123456:ABC
-TELEGRAM_CHAT=-1001234567890
-ENV
-
-# Deploy
 source deploy.env && ./deploy.sh \
-  --hetzner-token "$HETZNER_TOKEN" \
-  --cf-token "$CF_TOKEN" \
-  --domain "$DOMAIN" \
-  --openrouter-key "$OPENROUTER_KEY" \
-  --telegram-token "$TELEGRAM_TOKEN" \
-  --telegram-chat "$TELEGRAM_CHAT"
+  --hetzner-token   "$HETZNER_TOKEN"   \
+  --cf-token        "$CF_TOKEN"        \
+  --domain          "$DOMAIN"          \
+  --openrouter-key  "$OPENROUTER_KEY"  \
+  --telegram-token  "$TELEGRAM_TOKEN"  \
+  --telegram-chat   "$TELEGRAM_CHAT"
 ```
 
-**That's it.** In ~12 minutes:
-- ✅ Server hardened (UFW, fail2ban, SSH key auth)
-- ✅ Hermes + Open WebUI running
-- ✅ Cloudflare Tunnel live
-- ✅ All 6 skills deployed
-- ✅ Governance gates passing
-- ✅ iPhone PWA ready
-
-Then open your domain on your iPhone Safari and tap "Add to Home Screen".
+Read the `VERIFY:` comments at the top of `deploy.sh` before running — this path is alpha.
 
 ---
 
