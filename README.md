@@ -18,7 +18,9 @@ Birkin wraps a running [Hermes Agent](https://hermes-agent.nousresearch.com/) wi
 
 Most audit logs are append-only by convention. Birkin's is hash-chained at the row level: every row stores `SHA-256(prev_hash || payload)`. Mutate a single byte anywhere in the chain and verification fails, even if database triggers were disabled first.
 
-<!-- PLACEHOLDER: 20-second terminal GIF showing tamper-test.sh run (Phase 2 — record with asciinema) -->
+<div align="center">
+  <img alt="Birkin tamper-test demo" src="static/tamper-demo.gif" width="700" />
+</div>
 
 Run it yourself:
 
