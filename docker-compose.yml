@@ -89,8 +89,39 @@ services:
     networks:
       - birkin
 
+  # ─── HITL Proxy ─────────────────────────────────────────────────────────────
+  # Risk classifier + human-in-the-loop approval gate between nginx and Hermes.
+  # nginx routes /v1/ to this proxy; LOW/MEDIUM pass through immediately;
+  # HIGH-risk actions are held for Telegram approval before forwarding.
+  hitl-proxy:
+    build:
+      context: ./hitl-proxy
+      dockerfile: Dockerfile
+    container_name: birkin-hitl-proxy
+    restart: unless-stopped
+    environment:
+      HERMES_URL: "${HERMES_URL:-http://host.docker.internal:8686}"
+      HERMES_AUDIT_DB: "/data/audit.db"
+      HITL_DB: "/data/hitl.db"
+      HITL_ENABLED: "${HITL_ENABLED:-true}"
+      HITL_TIMEOUT_SECONDS: "${HITL_TIMEOUT_SECONDS:-300}"
+      HITL_RISK_THRESHOLD: "${HITL_RISK_THRESHOLD:-HIGH}"
+      HITL_DEFAULT_ACTION: "${HITL_DEFAULT_ACTION:-deny}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
+      AUDIT_APPEND_SCRIPT: "/app/scripts/audit-append.py"
+    volumes:
+      - birkin-data:/data
+      - ./scripts:/app/scripts:ro
+    expose:
+      - "8687"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - birkin
+
   # ─── Governance Scheduler ───────────────────────────────────────────────────
-  # Runs weekly drift-check against the configured Hermes endpoint.
+  # Runs migrations + weekly drift-check against the configured Hermes endpoint.
   scheduler:
     image: python:3.12-alpine
     container_name: birkin-scheduler
@@ -98,6 +129,8 @@ services:
     command: >
       sh -c "
         apk add --no-cache curl sqlite bash git &&
+        echo '[scheduler] Running migrations...' &&
+        bash /app/scripts/run-migrations.sh --db /data/audit.db || true &&
         while true; do
           echo '[scheduler] drift-check at '$$(date -u) ;
           bash /app/scripts/drift-check.sh 2>&1 | tail -5 || true ;
@@ -110,6 +143,7 @@ services:
       HERMES_DRIFT_DIR: "/data/drift"
     volumes:
       - ./scripts:/app/scripts:ro
+      - ./migrations:/app/migrations:ro
       - birkin-data:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"

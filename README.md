@@ -67,19 +67,25 @@ Then open `http://localhost:3000` in Safari on your iPhone → **Share → Add t
 
 ## What It Ships
 
-- **Hash-chained audit log** — SHA-256 chain, append-only triggers, tamper test in CI
-- **5-gate governance check** — process, audit integrity, skill versioning, drift, health
-- **iPhone PWA** — Open WebUI configured to talk to your Hermes, installable from Safari
-- **Drift detection** — 5 deterministic benchmark questions, bigram cosine similarity, 0.85 threshold (see [Drift Detection](#drift-detection))
-- **Kill switches** — `agent-stop.sh` (graceful), `agent-lockdown.sh` (network lockdown)
-- **Telegram alerts** — optional, fires on governance failure
-- **6 example SKILL.md files** — templates for daily-brief, sourcing-intel, competitor-monitor, health-check, code-governance, and Telegram alerting
+| Feature | Description |
+|---------|-------------|
+| **Cryptographic Audit Trail** | SHA-256(prev_hash \|\| payload) chain, enforced immutably at SQLite trigger level |
+| **5-Gate Governance Check** | Validates process, chain, skill versions, behavioral drift, safety boundaries |
+| **HITL Gatekeeper (Roadmap)** | Intercepts high-risk actions before execution with Telegram approval flows |
+| **Kill Switches with Audit Trail** | Graceful stop + network lockdown logged as audit events |
+| **Drift Detection** | Configurable behavioral threshold vs. signed baseline |
+| **Git-Versioned Skills** | YAML frontmatter, version commitment enforced, failure recovery documented |
+| **Health Endpoint** | JSON-scrapable /health for external monitoring (UptimeRobot, Nagios, etc.) |
+| **iPhone PWA** | Full-screen app, voice input, home screen installable |
 
-## What It Does Not Ship
+## What Birkin Does Not Do
 
-- Hermes Agent itself — bring your own ([hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/))
-- An LLM key — your Hermes already has one
-- A hosted service — runs on your machine; your data stays local
+- **Does not install Hermes** — bring your own ([hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/)); Birkin wraps a running instance
+- **Does not hold an LLM key** — your Hermes already has one; Birkin never touches it
+- **Does not prevent a determined insider** — the hash chain detects tampering after the fact; it cannot stop someone with direct DB + filesystem access from erasing everything and starting a new chain
+- **Does not catch subtle reasoning drift** — the drift benchmark uses 5 fixed prompts and surface similarity; a model that changes its reasoning while preserving output style will pass
+- **Does not run a hosted service** — your data stays local; no telemetry leaves your machine
+- **Does not replace a SOC** — Birkin is a lightweight governance layer for personal and small-team agent infrastructure, not a certified compliance framework
 
 Runs on a laptop, Raspberry Pi, or free-tier VPS. Optional `deploy.sh` provisions a Hetzner box with Cloudflare Tunnel for phone access outside your LAN (~€4.51/mo).
 

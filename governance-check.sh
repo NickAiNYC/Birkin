@@ -30,6 +30,9 @@ HEALTH_PORT="${HEALTH_PORT:-9999}"
 AUDIT_DB="${HERMES_AUDIT_DB:-$HOME/.hermes/audit.db}"
 SKILLS_DIR="${HERMES_SKILLS_DIR:-$HOME/.hermes/skills}"
 DRIFT_DIR="${HERMES_DRIFT_DIR:-$HOME/.hermes/drift}"
+GOVERNANCE_WEBHOOK_URL="${GOVERNANCE_WEBHOOK_URL:-}"
+GOVERNANCE_WEBHOOK_ENABLED="${GOVERNANCE_WEBHOOK_ENABLED:-false}"
+BIRKIN_VERSION="${BIRKIN_VERSION:-1.1.0}"
 
 PASS=0
 FAIL=0
@@ -314,6 +317,34 @@ else
         echo "❌ GOVERNANCE FAILED — $FAIL critical check(s) failed"
         echo "   Remediate the failures above before resuming autonomous operations."
         echo "   To stop the agent: ./scripts/agent-stop.sh"
+    fi
+fi
+
+# ── Governance webhook notification ──────────────────────────────────────────
+if [[ "$FAIL" -gt 0 && "${GOVERNANCE_WEBHOOK_ENABLED}" == "true" && -n "${GOVERNANCE_WEBHOOK_URL}" ]]; then
+    GW_TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    # Collect names of failed checks from stderr-captured output (best-effort)
+    PAYLOAD=$(python3 - <<PYEOF
+import json, datetime
+print(json.dumps({
+    "event":           "governance_fail",
+    "gates_failed":    ${FAIL},
+    "warns":           ${WARN},
+    "timestamp":       "${GW_TS}",
+    "birkin_version":  "${BIRKIN_VERSION}",
+    "audit_db":        "${AUDIT_DB}",
+}))
+PYEOF
+    )
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST "${GOVERNANCE_WEBHOOK_URL}" \
+        -H "Content-Type: application/json" \
+        --data-raw "$PAYLOAD" \
+        --max-time 10 2>/dev/null || echo "000")
+    if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "204" ]]; then
+        vlog "Governance webhook fired (HTTP $HTTP_CODE)"
+    else
+        vlog "Governance webhook returned HTTP $HTTP_CODE — continuing"
     fi
 fi
 
