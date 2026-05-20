@@ -75,6 +75,21 @@ Then open `http://localhost:3000` in Safari on your iPhone → **Share → Add t
 - **Telegram alerts** — optional, fires on governance failure
 - **6 example SKILL.md files** — templates for daily-brief, sourcing-intel, competitor-monitor, health-check, code-governance, and Telegram alerting
 
+## How Birkin Compares
+
+| Feature | Birkin | Raw Hermes | Claude Code | ChatGPT |
+|---------|--------|-----------|-------------|---------|
+| **iPhone PWA** | ✅ | ❌ | ❌ | ✅ |
+| **Hash-chained audit log** | ✅ | ❌ | ❌ | ❌ |
+| **Tamper detection** | ✅ | ❌ | ❌ | ❌ |
+| **Governance check (5 gates)** | ✅ | ❌ | ❌ | ❌ |
+| **Self-improving skills** | ✅ | ✅ | ❌ | ❌ |
+| **Free** | ✅ | ✅ | ❌ | ❌ |
+| **Kill switches** | ✅ | ❌ | ❌ | ❌ |
+| **Open source** | ✅ | ✅ | ❌ | ❌ |
+
+**One glance. Clear differentiation.** Birkin is the infrastructure layer you bolt onto Hermes when you need to prove what your agent did—and prevent it from doing the wrong thing.
+
 ## What It Does Not Ship
 
 - Hermes Agent itself — bring your own ([hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/))
