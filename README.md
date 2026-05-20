@@ -133,6 +133,21 @@ If you run an agent without Birkin, you're flying blind. With Birkin, you have a
 | **Health Endpoint for External Monitoring** | JSON‑scrapable `/health` endpoint. Integrates with UptimeRobot, Nagios, Datadog. Stateless, read‑only, safe to expose. |
 | **iPhone PWA with Voice Control** | Full‑screen app from Safari. Voice input support. No App Store. Runs right from your home screen. |
 
+## How Birkin Compares
+
+| Feature | Birkin | Raw Hermes | Claude Code | ChatGPT |
+|---------|--------|-----------|-------------|---------|
+| **iPhone PWA** | ✅ | ❌ | ❌ | ✅ |
+| **Hash-chained audit log** | ✅ | ❌ | ❌ | ❌ |
+| **Tamper detection** | ✅ | ❌ | ❌ | ❌ |
+| **Governance check (5 gates)** | ✅ | ❌ | ❌ | ❌ |
+| **Self-improving skills** | ✅ | ✅ | ❌ | ❌ |
+| **Free** | ✅ | ✅ | ❌ | ❌ |
+| **Kill switches** | ✅ | ❌ | ❌ | ❌ |
+| **Open source** | ✅ | ✅ | ❌ | ❌ |
+
+**One glance. Clear differentiation.** Birkin is the infrastructure layer you bolt onto Hermes when you need to prove what your agent did—and prevent it from doing the wrong thing.
+
 ### What Birkin Does Not Do
 
 Birkin is honest about its perimeter:
