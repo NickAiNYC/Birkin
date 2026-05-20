@@ -126,21 +126,23 @@ If you run an agent without Birkin, you're flying blind. With Birkin, you have a
 |---------|----------------|
 | **Cryptographic Audit Trail** | SHA‑256(prev_hash \|\| payload) chain, enforced immutably at the SQLite trigger level. Every state change is provably chained. Hand an auditor the DB and they can independently verify nothing was mutated. |
 | **5‑Gate Deterministic Governance Check** | Validates process integrity, audit chain integrity, skill version pinning, behavioral drift vs. a signed baseline, and safety boundaries—all in one pass. Pure logic, no probabilistic AI guessing. |
-| **Pre‑Execution HITL Gatekeeper (Roadmap)** | Intercepts high‑risk agent actions *before* they execute. Telegram approval flows, configurable timeout/deny policies. Zero overhead on low‑risk actions. |
+| **Pre‑Execution HITL Gatekeeper** | Intercepts high‑risk agent actions *before* they execute. Telegram approval flows, configurable timeout/deny policies. Zero overhead on low‑risk actions. |
 | **Kill Switches with Audit Trail** | Graceful stop + network lockdown actions that are themselves logged. You always know who pulled the plug and when. |
 | **Drift Detection with Signed Baseline** | Configurable behavioral threshold. Birkin catches silent model degradation with deterministic bigram comparison against a baseline you've signed off on—no hand‑wavy similarity scores. |
 | **Git‑Versioned Skills with Enforcement** | YAML frontmatter in each skill. Version commitment enforced. Governance check fails if an unversioned skill runs. Documented failure recovery paths required. |
 | **Health Endpoint for External Monitoring** | JSON‑scrapable `/health` endpoint. Integrates with UptimeRobot, Nagios, Datadog. Stateless, read‑only, safe to expose. |
 | **iPhone PWA with Voice Control** | Full‑screen app from Safari. Voice input support. No App Store. Runs right from your home screen. |
 
-### What Birkin Does NOT Do
+### What Birkin Does Not Do
 
 Birkin is honest about its perimeter:
-- Does **not** protect against physical access or root‑level host compromise.
-- Does **not** prevent prompt injection attacks on the agent itself (yet—roadmap item).
-- Does **not** claim to be a compliance certification (SOC 2, HIPAA, etc.)—it provides the audit artifacts those certifications require.
-- Does **not** log every token or inference detail by default. Focus is on actions that change state.
-- Does **not** try to be an AI model observability platform. Drift detection is simple and explainable, not black‑box ML.
+- Does **not** install Hermes — bring your own ([hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/)); Birkin wraps a running instance.
+- Does **not** hold an LLM key — your Hermes already has one; Birkin never touches it.
+- Does **not** protect against physical access or root‑level host compromise — the hash chain detects tampering after the fact; it cannot stop someone who erases everything and starts a new chain.
+- Does **not** catch subtle reasoning drift — the drift benchmark uses 5 fixed prompts and surface similarity; a model that changes reasoning while preserving output style will pass.
+- Does **not** prevent prompt injection attacks on the agent itself (roadmap item).
+- Does **not** claim to be a compliance certification (SOC 2, HIPAA, etc.) — it provides the audit artifacts those certifications require.
+- Does **not** run a hosted service — your data stays local; no telemetry leaves your machine.
 
 Full threat model: [THREAT_MODEL.md](THREAT_MODEL.md)
 
