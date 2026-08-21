@@ -476,7 +476,7 @@ birkin/
 │   │   └── null_agent.py   # Second adapter — proves the seam
 │   ├── audit.py            # AuditLedger + MerkleCheckpoint issuance
 │   ├── engine.py           # The control plane
-│   ├── verify.py           # Offline verifier (9 checks)
+│   ├── verify.py           # Offline verifier (7 checks)
 │   └── cli.py              # `birkin` command
 ├── policies/
 │   └── default.policy.json

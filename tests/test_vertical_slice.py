@@ -185,6 +185,9 @@ def test_engine_end_to_end_authentic(tmp_path):
     engine, adapter = _make_engine()
     identity = adapter.make_identity(agent_id="t1", policy_ref=engine.policy.ref)
     engine.start_session(identity)
+    # The default policy allows fs.write only under the /tmp/birkin/ sandbox
+    # prefix; ensure the sandbox dir exists so the write succeeds on a clean box.
+    Path("/tmp/birkin").mkdir(parents=True, exist_ok=True)
     req = adapter.build_action_request(
         tool="fs.write", args={"path": "/tmp/birkin/x.txt", "data": "ok"}
     )
