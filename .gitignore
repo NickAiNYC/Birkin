@@ -1,0 +1,32 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Birkin artifacts (do not commit exported run packages)
+*.birkin.json
+run_package*.json
+/tmp/birkin/
+
+# Env
+.env
+.envrc
