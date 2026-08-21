@@ -1,122 +1,103 @@
 # Contributing to Birkin
 
-Birkin welcomes two kinds of contributions: **skills** (agent behavior files) and **core features** (governance infrastructure). Both paths are documented here.
+Birkin is local-first, MIT-licensed, and built around one rule: the
+credibility surface must stay closed. Most of this document is about
+what that rule means in practice.
 
----
+## The short version
 
-## Good First Issues
+1. Run `bash scripts/ci_smoke.sh` before you push. If it fails, the
+   release is red. No exceptions.
+2. Two test files are **sacred**. Read the rule below before touching them.
+3. Adding features is fine. Weakening the verifier is not.
+4. Keep the scope locks in the README. Multi-bot groups, full MCP
+   gateway, and Attack Lab productization are *next cycle*, not this
+   one. Do not pull them in piecemeal.
 
-These are well-scoped, self-contained, and unblock higher-priority roadmap work:
+## Sacred tests
 
-| Issue | Label | What it unlocks |
-|-------|-------|-----------------|
-| Add risk patterns to HITL classifier | `good-first-issue` | Tier 2 gatekeeper (pre-execution gatekeeping) |
-| Create systemd service file for Birkin | `good-first-issue` | Native Linux installs without Docker |
-| Add Homebrew formula | `good-first-issue` | macOS one-line install |
-| Write `--json` output for governance-check.sh | `good-first-issue` | Governance webhooks and CI integration |
-| Add `action_type` column to audit schema | `good-first-issue` | Structured audit schema (Tier 1 roadmap) |
-| Write CSV/JSON compliance export script | `good-first-issue` | Compliance export (Tier 1 roadmap) |
-| Add PagerDuty/Datadog webhook on governance failure | `good-first-issue` | Governance webhooks (Tier 1 roadmap) |
+The following files encode the closed credibility surface that makes
+Birkin worth taking seriously:
 
-See [ROADMAP.md](ROADMAP.md) to understand how each item unblocks the next tier.
+* `tests/test_tamper_matrix.py` — six realistic tampering attacks; every
+  one must verify as `TAMPERED` or `INVALID`, never `AUTHENTIC`.
+* `tests/test_receipt_binding.py` — twelve receipt fields, each
+  cryptographically bound into the signed material; mutating any one
+  field alone must invalidate the signature.
 
----
+### The rule
 
-## Contributing a Skill
+> **No PR may merge if it removes, weakens, skips, or modifies a test in
+> these two files in a way that accepts a previously-rejected mutation
+> as `AUTHENTIC`.**
 
-### 1. Fork and clone
+Concretely, the following changes are **release blockers** and require
+a written design discussion before they are even attempted:
 
-```bash
-git clone https://github.com/NickAiNYC/Birkin.git && cd Birkin
-```
+* Deleting or `pytest.skip`-ing any test in the two sacred files.
+* Changing a test's assertion from `== "TAMPERED"` to anything weaker.
+* Adding a mutation to the matrix and asserting it verifies as
+  `AUTHENTIC` (this is the most insidious form — it looks like a new
+  test, but it actually opens the surface).
+* Removing a field from `AuthorizationReceipt.SIGN_FIELDS` so it is
+  no longer covered by the receipt signature.
+* Removing or weakening verifier check #8 (`Identity bound to run`)
+  or check #0 (`Manifest + schema versions`).
+* Relaxing `PolicySpec.evaluate`'s default-deny behavior so an
+  unrecognized tool can pass without an explicit `allow` rule.
 
-### 2. Create your skill file
+### When the rule is in tension with a feature
 
-```bash
-cp SKILL_TEMPLATE.md skills/your-skill-name.md
-```
+If a future feature genuinely requires a mutation that currently
+verifies as `TAMPERED` to verify as `AUTHENTIC` — for example, a
+multi-bot governance model where receipts are intentionally shared
+across agents — that is a **design change**, not a test fix.
 
-Fill in the YAML frontmatter:
+The right sequence is:
 
-```yaml
----
-name: your-skill-name
-description: What it does and when to trigger it
-version: 1.0.0
-triggers:
-  - cron: "0 9 * * *"   # optional
-  - manual
-tools_needed:
-  - web_search
-  - file_write
-failure_recovery_steps:
-  - "If X fails, check Y"
-  - "Manually trigger: hermes run --skill your-skill-name"
----
-```
+1. Open a design discussion (issue, not a PR).
+2. Propose a new schema version (e.g. `birkin.receipt@2`) and a new
+   manifest entry. Old verifiers continue to refuse the new packages
+   rather than silently misinterpreting them.
+3. Update the sacred tests to assert the *new* expected behavior, with
+   a comment linking to the design discussion.
+4. Bump `PACKAGE_MANIFEST["verifier_min_version"]` and document the
+   migration.
 
-### 3. Write the skill body
+The sacred tests are not in the way of progress. They are the
+load-bearing wall. Move them deliberately, never by accident.
 
-Clear numbered steps. Assume the agent needs explicit instructions — no hand-waving.
+## Local-first
 
-### 4. Test it
+Birkin does not phone home. PRs that introduce network calls in the
+core engine, the verifier, or the default policy will be rejected.
+Network calls belong in adapters, behind the `AgentAdapter` seam.
 
-```bash
-hermes run --skill your-skill-name
-```
+## Adapters, not wrappers
 
-### 5. Run governance gates (all 5 must pass)
+A new runtime does not get folded into the engine. It gets a new
+adapter under `birkin/adapters/` that implements the `AgentAdapter`
+Protocol. `NullAgentAdapter` is the reference minimal implementation;
+`HermesAdapter` is the reference real implementation. A new adapter
+should be smaller than Hermes and clearer than NullAgent.
 
-```bash
-./governance-check.sh
-```
+## CI
 
-### 6. Submit a PR
+`.github/workflows/ci.yml` runs `scripts/ci_smoke.sh` on every push and
+PR. The smoke gate is fail-fast and covers:
 
-One skill per PR. Include what the skill does and the `governance-check.sh` output in the PR description.
+1. `pytest tests/`
+2. `birkin demo` → `VERDICT: AUTHENTIC`
+3. `birkin verify` on the exported package → `AUTHENTIC`
+4. `birkin attack 1` (prompt injection) → blocked + `AUTHENTIC`
+5. `birkin attack 2` (privilege escalation) → all three decisions + `AUTHENTIC`
+6. `birkin attack 3` (tampering) → clean `AUTHENTIC`, tampered `TAMPERED`
+7. `NullAgent` second-adapter proof → `AUTHENTIC`
 
-#### Skill PR checklist
+If you add a feature, add a smoke-gate step that proves it. If you
+cannot add such a step, the feature does not belong in this cycle.
 
-- [ ] SKILL.md follows template (YAML frontmatter + Markdown body)
-- [ ] Includes at least two `failure_recovery_steps`
-- [ ] Tested locally (`hermes run --skill your-skill-name`)
-- [ ] Version set to `1.0.0` (semantic versioning)
-- [ ] All 5 governance gates pass (`./governance-check.sh`)
+## Licensing
 
----
-
-## Contributing Core Features
-
-For governance infrastructure (audit schema, governance check gates, drift detection, kill switches):
-
-1. Open an issue first — especially for anything touching the audit schema or hash chain logic
-2. Link to the relevant ROADMAP.md tier so reviewers understand the dependency graph
-3. All hash-chain changes must include a tamper-test update in `tests/tamper-test.sh`
-4. All governance-check gate changes must update the gate description in README.md
-
----
-
-## Skill Ideas
-
-- Slack message summarizer
-- Notion page creator
-- LinkedIn job tracker
-- GitHub PR reviewer
-- Stripe revenue daily summary
-- Email draft responder
-- Calendar prep (next-meeting briefing)
-- Weather + commute alert
-- Hacker News thread monitor
-
----
-
-## What Gets Merged
-
-1. Governance-compliant YAML frontmatter
-2. At least two documented failure recovery steps
-3. All 5 gates passing (`./governance-check.sh`)
-4. Skill not already shipped
-
-For core features: follows the roadmap dependency graph and includes tests.
-
-Questions: open an issue or tweet [@NickAiNYC](https://x.com/NickAiNYC).
+All contributions are MIT-licensed. By submitting a PR you agree your
+contributions are licensed under the project's MIT license.
