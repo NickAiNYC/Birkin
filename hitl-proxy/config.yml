@@ -1,0 +1,21 @@
+hermes_url: http://host.docker.internal:8686
+
+risk_rules:
+  - pattern: "tool_call: delete_file"
+    level: HIGH
+  - pattern: "external_api: .*"
+    level: MEDIUM
+  - pattern: "phi: .*"
+    level: HIGH
+
+default_level: LOW
+
+telegram:
+  bot_token: ${TELEGRAM_BOT_TOKEN}
+  chat_id: ${TELEGRAM_CHAT_ID}
+
+approval_timeout_seconds: 300
+
+auto_approve_skills:
+  - daily-brief
+  - health-check

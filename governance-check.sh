@@ -30,6 +30,9 @@ HEALTH_PORT="${HEALTH_PORT:-9999}"
 AUDIT_DB="${HERMES_AUDIT_DB:-$HOME/.hermes/audit.db}"
 SKILLS_DIR="${HERMES_SKILLS_DIR:-$HOME/.hermes/skills}"
 DRIFT_DIR="${HERMES_DRIFT_DIR:-$HOME/.hermes/drift}"
+GOVERNANCE_WEBHOOK_URL="${GOVERNANCE_WEBHOOK_URL:-}"
+GOVERNANCE_WEBHOOK_ENABLED="${GOVERNANCE_WEBHOOK_ENABLED:-false}"
+BIRKIN_VERSION="${BIRKIN_VERSION:-1.1.0}"
 
 PASS=0
 FAIL=0
@@ -37,7 +40,7 @@ WARN=0
 START_TIME=$(date +%s)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-vlog() { [[ "$VERBOSE" == true ]] && echo "       $*"; }
+vlog() { [[ "$VERBOSE" == true ]] && echo "       $*" || true; }
 
 check_pass() {
     echo "  ✅ $1"
@@ -180,8 +183,9 @@ else
             "cd $SKILLS_DIR && git init && git add -A && git commit -m 'Initial skill set'"
     fi
 
-    # Skill count
-    SKILL_COUNT=$(ls "$SKILLS_DIR"/*.md 2>/dev/null | wc -l)
+    # Skill count — supports both v0.13 flat layout (skills/*.md) and
+    # v0.14+ subdirectory layout (skills/*/SKILL.md)
+    SKILL_COUNT=$(find "$SKILLS_DIR" -maxdepth 2 \( -name "SKILL.md" -o -name "*.md" \) 2>/dev/null | wc -l || echo 0)
     if [[ "$SKILL_COUNT" -ge 5 ]]; then
         check_pass "$SKILL_COUNT skills deployed (minimum 5 required)"
     elif [[ "$SKILL_COUNT" -gt 0 ]]; then
@@ -194,9 +198,9 @@ else
     MISSING_VERSION=0
     MISSING_DESC=0
     MISSING_RECOVERY=0
-    for f in "$SKILLS_DIR"/*.md; do
+    for f in $(find "$SKILLS_DIR" -maxdepth 2 \( -name "SKILL.md" -o -name "*.md" \) 2>/dev/null); do
         [[ -f "$f" ]] || continue
-        fname="$(basename "$f")"
+        fname="$(basename "$(dirname "$f")")/$(basename "$f")"
         grep -q "^version:" "$f"     || { MISSING_VERSION=$((MISSING_VERSION+1)); vlog "MISSING version: $fname"; }
         grep -q "^description:" "$f" || { MISSING_DESC=$((MISSING_DESC+1));    vlog "MISSING description: $fname"; }
         grep -q "failure_recovery" "$f" || { MISSING_RECOVERY=$((MISSING_RECOVERY+1)); vlog "MISSING failure_recovery_steps: $fname"; }
@@ -313,6 +317,34 @@ else
         echo "❌ GOVERNANCE FAILED — $FAIL critical check(s) failed"
         echo "   Remediate the failures above before resuming autonomous operations."
         echo "   To stop the agent: ./scripts/agent-stop.sh"
+    fi
+fi
+
+# ── Governance webhook notification ──────────────────────────────────────────
+if [[ "$FAIL" -gt 0 && "${GOVERNANCE_WEBHOOK_ENABLED}" == "true" && -n "${GOVERNANCE_WEBHOOK_URL}" ]]; then
+    GW_TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    # Collect names of failed checks from stderr-captured output (best-effort)
+    PAYLOAD=$(python3 - <<PYEOF
+import json, datetime
+print(json.dumps({
+    "event":           "governance_fail",
+    "gates_failed":    ${FAIL},
+    "warns":           ${WARN},
+    "timestamp":       "${GW_TS}",
+    "birkin_version":  "${BIRKIN_VERSION}",
+    "audit_db":        "${AUDIT_DB}",
+}))
+PYEOF
+    )
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST "${GOVERNANCE_WEBHOOK_URL}" \
+        -H "Content-Type: application/json" \
+        --data-raw "$PAYLOAD" \
+        --max-time 10 2>/dev/null || echo "000")
+    if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "204" ]]; then
+        vlog "Governance webhook fired (HTTP $HTTP_CODE)"
+    else
+        vlog "Governance webhook returned HTTP $HTTP_CODE — continuing"
     fi
 fi
 

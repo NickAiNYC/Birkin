@@ -30,16 +30,16 @@
 #   SSH key upload, and tunnel creation are all guarded with existence checks.
 #
 # VERIFICATION NOTICE — READ BEFORE RUNNING:
-#   This script references Hermes Agent v0.13.0 by NousResearch. Before
+#   This script references Hermes Agent v0.14.0 by NousResearch. Before
 #   running in production, verify the following at the official source:
 #
 #   ⚠️  VERIFY: https://github.com/NousResearch/hermes-agent
-#       - Confirm v0.13.0 is the current stable release
+#       - Confirm v0.14.0 is the current stable release
 #       - Confirm the install.sh URL and method shown below
 #       - Confirm ~/.local/bin/hermes is the correct binary path
 #       - Confirm `hermes gateway` is the correct API-server subcommand
 #       - Confirm config.yaml location and supported keys
-#       - Confirm SKILL.md discovery path (default: ~/.hermes/skills/)
+#       - Confirm SKILL.md discovery path (default: ~/.hermes/skills/<name>/SKILL.md)
 #       - Confirm OpenAI-compatible endpoint path (default: /v1/*)
 #
 #   ⚠️  VERIFY: Open WebUI Docker image
@@ -395,7 +395,7 @@ ok "Server hardened"
 # ═════════════════════════════════════════════════════════════════════════════
 # PHASE 3: Hermes Agent
 # ═════════════════════════════════════════════════════════════════════════════
-phase "Phase 3/7 — Hermes Agent v0.13.0"
+phase "Phase 3/7 — Hermes Agent v0.14.0"
 
 info "⚠️  VERIFY BEFORE RUNNING: Confirm Hermes install URL at https://github.com/NousResearch/hermes-agent"
 info "    If the install script URL below has changed, update HERMES_INSTALL_URL in this script."
@@ -787,9 +787,13 @@ python3 -m pip install --user --quiet flask requests 2>/dev/null \
 # ── Copy files into place ────────────────────────────────────────────────────
 echo "[FINAL] Deploying files..."
 
-# Skills to Hermes skills dir
+# Skills to Hermes skills dir (v0.14+ subdirectory layout)
 if ls ~/birkin/skills/*.md &>/dev/null 2>&1; then
-    cp ~/birkin/skills/*.md ~/.hermes/skills/
+    for skillfile in ~/birkin/skills/*.md; do
+        skillname="$(basename "$skillfile" .md)"
+        mkdir -p ~/.hermes/skills/"$skillname"
+        cp "$skillfile" ~/.hermes/skills/"$skillname"/SKILL.md
+    done
 fi
 
 # Governance scripts
@@ -993,9 +997,9 @@ HTTP_HERMES=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${HERMES_
     || atest_fail "T3: Hermes API health returned HTTP $HTTP_HERMES — check: systemctl status hermes-gateway"
 
 # T4: Skills loaded
-SKILL_COUNT=$(ls ~/.hermes/skills/*.md 2>/dev/null | wc -l)
+SKILL_COUNT=$(find ~/.hermes/skills -maxdepth 2 \( -name "SKILL.md" -o -name "*.md" \) 2>/dev/null | wc -l)
 [[ "$SKILL_COUNT" -ge 5 ]] \
-    && atest_pass "T4: Skills loaded ($SKILL_COUNT .md files in ~/.hermes/skills/)" \
+    && atest_pass "T4: Skills loaded ($SKILL_COUNT skill file(s) in ~/.hermes/skills/)" \
     || { [[ "$SKILL_COUNT" -gt 0 ]] \
         && atest_warn "T4: Only $SKILL_COUNT skill(s) found (expected 5+)" \
         || atest_fail "T4: No skills found in ~/.hermes/skills/"; }

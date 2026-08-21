@@ -1,610 +1,548 @@
-<div align="center">
-  <img alt="Birkin — autonomous Hermes agent that carries its own proof of integrity" src="assets/birkin-banner.png" width="900" />
-</div>
-
 # Birkin
 
-<div align="center">
+> The open **Agent Authorization & Evidence Layer**.
+> Runtime-agnostic control plane for autonomous agents: signed authorization receipts, a verifiable audit ledger with Merkle checkpoints, and offline verification of exported run packages.
 
-**iPhone Control + Hash-Chained Audit for Your Hermes Agent**
-
-![Free](https://img.shields.io/badge/cost-free-brightgreen?style=for-the-badge)
-![iPhone PWA](https://img.shields.io/badge/control-iPhone%20PWA-black?style=for-the-badge)
-![One Command](https://img.shields.io/badge/install-one%20command-FF7A00?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
-
-![Governance](https://img.shields.io/badge/governance-5%2F5%20gates%20passing-brightgreen)
-![Audit](https://img.shields.io/badge/audit-SHA--256%20chained-0A2540)
-[![Tamper Test](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml/badge.svg)](https://github.com/NickAiNYC/Birkin/actions/workflows/tamper-test.yml)
-
-Already running [Hermes Agent](https://hermes-agent.nousresearch.com/)? Point Birkin at it and get an **iPhone PWA**, **hash-chained audit log**, **drift detection**, and **kill switches** — without modifying your Hermes install.
-
-</div>
+Birkin is the *enforcement and cryptographic evidence plane* that sits between autonomous agents and the systems they can affect. An agent under Birkin governance cannot side-effect the world without producing a signed, verifiable receipt for what it did, why it was allowed (or denied), and under which policy.
 
 ---
 
-## ⚡ One-command install
+## The promise, and the proof
 
-<div align="center">
-  <img alt="Birkin" src="assets/birkin-icon.png" width="140" />
-</div>
+Every agent run under Birkin produces a single self-contained JSON file. Anyone, anywhere, can verify it offline — no Birkin server, no policy file, no agent runtime required. This is the credibility feature.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
+$ birkin demo --out run.json        # an agent runs under Birkin governance
+$ birkin verify run.json            # anyone, offline, re-derives the verdict
+BIRKIN VERIFICATION
+✓ Manifest + schema versions
+✓ Event chain valid
+✓ Signatures valid
+✓ Policy version verified
+✓ Identity verified
+✓ No missing events
+✓ Checkpoint matches
+✓ Authorization receipts valid
+✓ Identity bound to run
+VERDICT: AUTHENTIC
 ```
 
-Or if you don't trust pipe-to-bash (you shouldn't, but the script is 100 lines you can read first):
+The verdict is `AUTHENTIC` only if all **nine** independent checks pass. The same file, mutated in any of six realistic ways, flips to `VERDICT: TAMPERED` — and the verifier tells you exactly which check caught it.
+
+This repository ships that closed surface: working code, signed receipts, three blocked attacks, a six-attack tamper matrix, twelve-binding receipt strength matrix, a second adapter proving the runtime seam, a manifest gate, and a CI smoke gate that fails the release on any regression.
+
+## Run it in 60 seconds
 
 ```bash
-git clone https://github.com/NickAiNYC/Birkin && cd Birkin
-HERMES_URL=http://host.docker.internal:8686 docker compose up -d
+git clone https://github.com/nickainyc/birkin.git
+cd birkin
+pip install -e .
+python3 scripts/demo_all.py
 ```
 
-Then open `http://localhost:3000` in Safari on your iPhone → **Share → Add to Home Screen**.
+You will see, in order:
+
+1. A clean end-to-end run producing `VERDICT: AUTHENTIC`.
+2. Three concrete attacks, each **blocked**, **recorded**, and **independently verifiable** — including a ledger-tampering attack that flips the verdict to `VERDICT: TAMPERED`.
+
+The full chain exercised by every demo:
+
+```
+Agent
+  → Birkin Identity (signed passport)
+  → Declared Intent (preferred)
+  → Policy Engine
+  → Capability / risk check
+  → Tool / action attempt
+  → Authorization Receipt (signed)
+  → Action (or deny / require_approval)
+  → Signed Audit Event
+  → Merkle Checkpoint
+  → birkin verify  →  VERDICT: AUTHENTIC
+```
+
+### Three attacks that are blocked + recorded + verifiable
+
+| # | Attack | What happens | Verdict |
+|---|-------|--------------|---------|
+| 1 | Prompt injection / goal hijacking | A smuggled "[SYSTEM OVERRIDE]" instruction tries to coerce the agent into `shell.exec('rm -rf /etc /var /home')`. Policy denies; receipt + audit event record the attempt. | AUTHENTIC (attack blocked) |
+| 2 | Unauthorized / privilege-escalating tool use | Agent attempts `fs.write` to `/etc/passwd` (denied), then `/home/user/.bashrc` (gated to `require_approval`, never executed), then a legitimate `/tmp/birkin/` write (allowed). | AUTHENTIC (escalation blocked) |
+| 3 | Skill or policy tampering | A clean run is exported; one audit-event payload is then mutated to pretend the executed tool was `shell.exec`. `birkin verify` detects the event_hash mismatch. | TAMPERED (tampering detected) |
+
+Run any single attack:
+
+```bash
+birkin attack 1   # prompt injection
+birkin attack 2   # privilege escalation
+birkin attack 3   # tampering detection
+```
+
+### `birkin verify` works offline
+
+```bash
+# Export a run package
+birkin demo --out run.json
+
+# Verify it offline — no Birkin server, no policy file, no agent runtime required.
+birkin verify run.json
+```
+
+A run package is a self-contained JSON artifact. Everything required to recompute the verdict is embedded: the Birkin control-plane public key, the agent passport, the policy spec, the full audit ledger, and the Merkle checkpoint.
+
+### CI smoke gate
+
+```bash
+bash scripts/ci_smoke.sh
+```
+
+This is the gate that has to stay green. It runs seven checks, fail-fast, and exits non-zero on any regression:
+
+1. `pytest tests/` — the full unit + binding + tamper-matrix suite.
+2. `birkin demo` — produces `VERDICT: AUTHENTIC`.
+3. `birkin verify <demo.json>` — offline verify is `AUTHENTIC`.
+4. `birkin attack 1` — prompt injection is **blocked** + `AUTHENTIC`.
+5. `birkin attack 2` — privilege escalation produces all three decisions + `AUTHENTIC`.
+6. `birkin attack 3` — clean is `AUTHENTIC`, tampered is `TAMPERED`, side by side.
+7. `NullAgent` second-adapter proof — same engine, same verifier, `AUTHENTIC`.
+
+The workflow in `.github/workflows/ci.yml` runs this gate on every push and PR. **If `scripts/ci_smoke.sh` ever exits non-zero, the release is red. No exceptions.**
 
 ---
 
-## How to Get Your Hermes API Key
+## What this slice ships
 
-This is the `API_SERVER_KEY` in your Hermes config — **not** your DeepSeek, OpenRouter, or Anthropic key. Generate a separate one.
+Concrete, working, signed, and tested:
 
-**1. Check if you already have one:**
+- **`birkin.crypto`** — Ed25519 sign/verify, deterministic canonical JSON, SHA-256, and a Merkle root implementation. The root of every claim Birkin makes.
+- **`birkin.models`** — Pydantic v2 models for every artifact in the chain:
+  - `AgentIdentity` — self-signed passport (public key + agent_id + runtime + policy + session + TTL).
+  - `PolicyDecision` — `{decision, policy, rule, risk_score, reason}`.
+  - `AuthorizationReceipt` — signed, portable proof of an allow/deny/require_approval.
+  - `AuditEvent` — hash-chained (`prev_hash` → `event_hash`) and individually signed.
+  - `MerkleCheckpoint` — signed Merkle root over a contiguous event range, with an anchor seam.
+  - `RunPackage` — the offline-verifiable export artifact.
+- **`birkin.policy`** — a real structured policy engine (not a shell script). Loads a JSON spec, evaluates rules top-down, returns a `PolicyDecision`. Ships with a safe-by-default policy (`policies/default.policy.json`).
+- **`birkin.adapter`** — the `AgentAdapter` interface. Hermes becomes the first adapter (`birkin/adapters/hermes.py`), not the product. Adding a new runtime is a matter of implementing the protocol.
+- **`birkin.audit`** — append-only ledger with `prev_hash` chaining and Merkle checkpoint issuance.
+- **`birkin.engine`** — the control plane. Wires identity → intent → policy → receipt → action → audit → checkpoint → export.
+- **`birkin.verify`** — the offline verifier. Seven checks, deterministic verdict, pasteable output.
+- **`birkin.cli`** — the `birkin` command: `verify`, `demo`, `attack`, `run`, `keys`.
 
-```bash
-grep API_SERVER_KEY ~/.hermes/.env
-```
+## The new primitive: the Authorization Receipt
 
-If it prints a value, you're done — use that as `HERMES_API_KEY` in Birkin's `.env`.
+Every side-effecting action — or refusal of one — produces exactly one signed `AuthorizationReceipt`. A receipt is portable: it can be presented to a downstream system, a human reviewer, or an offline verifier, and it stands on its own as cryptographic evidence that:
 
-**2. If missing, generate one:**
+* the action was attempted under a specific agent identity;
+* the arguments were exactly these (the receipt signs `args_hash`);
+* the policy engine evaluated the request and returned a specific decision;
+* the decision was bound to a specific `policy@version` and `rule`;
+* the Birkin control plane vouches for all of the above via an Ed25519 signature.
 
-```bash
-echo "API_SERVER_KEY=$(openssl rand -hex 16)" >> ~/.hermes/.env
-```
-
-**3. Enable the API server in Hermes config:**
-
-Open `~/.hermes/config.yaml` and confirm this block exists:
-
-```yaml
-platforms:
-  api_server:
-    enabled: true
-    port: 8686
-```
-
-**4. Restart Hermes:**
-
-```bash
-hermes gateway start
-```
-
-**5. Verify it works:**
-
-```bash
-source ~/.hermes/.env
-curl http://localhost:8686/health -H "Authorization: Bearer $API_SERVER_KEY"
-```
-
-You should get `{"status": "ok"}`. If you get 401, the key in `.env` doesn't match what Hermes loaded — restart Hermes and retry.
-
-> **Never reuse a model provider key** (DeepSeek, OpenRouter, Anthropic, etc.) as your `API_SERVER_KEY`. Generate a dedicated one with the command above.
+A receipt is the smallest unit of agent accountability. Everything else in Birkin is built to make receipts unforgeable, un-replayable, and un-deniable.
 
 ---
 
-## What Birkin ships
+## Credibility proof: tamper surface, binding strength, adapter seam
 
-- 📱 **Open WebUI** configured to talk to *your* Hermes — installable as an iPhone PWA
-- 🛡 **Hash-chained audit log** — SHA-256 chain, append-only triggers, tamper test passing in CI
-- 🔍 **Drift detection** — weekly cosine similarity benchmarks
-- 🛑 **Kill switches** — `agent-stop.sh`, `agent-lockdown.sh`
-- 🪪 **5-gate governance check** — process, audit, skills, drift, health
-- 📨 **Telegram alerts** (optional) on governance failure
-- 🧩 **6 example SKILL.md files** to drop into your Hermes skills directory
+The credibility claim has three legs. Each is exercised by a dedicated test file and asserted by `scripts/ci_smoke.sh`.
 
-## What Birkin does NOT ship
+### 1. Tamper surface completeness
 
-- ❌ **Hermes Agent itself** — bring your own. See [hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/)
-- ❌ **An LLM key** — your Hermes already has one
-- ❌ **A hosted service** — runs on your machine by design (free, private, your data stays local)
+Every realistic mutation of an exported run package must flip the verdict to `TAMPERED` (or `INVALID` for structural breakage). If any of the six attacks below still verifies as `AUTHENTIC`, the claim is incomplete.
 
-Runs on your laptop, a Raspberry Pi, a free-tier VPS — anywhere Docker runs. Optional `deploy.sh` provisions a Hetzner box with Cloudflare Tunnel if you want phone access from outside your LAN (~€4.51/mo for the VPS).
+| # | Attack | Mutation | Caught by | Verdict |
+|---|--------|----------|-----------|---------|
+| A | Receipt signature flip | Flip one byte of a receipt's `signature` | Signatures valid | TAMPERED |
+| B | Identity rewrite | Replace `identity.json` with a freshly self-signed passport claiming a different `public_key` | **Identity bound to run** | TAMPERED |
+| C | Policy version swap | Replace `policy.spec` with a more permissive policy, leave `policy.sha256` unchanged | Policy version verified | TAMPERED |
+| D | Checkpoint root rewrite | Flip one hex char of `final_checkpoint.root` | Checkpoint matches | TAMPERED |
+| E | Missing event | Delete event #7 from the middle of the chain | No missing events + Event chain valid + Checkpoint matches | TAMPERED |
+| F | Reordered event | Swap events at positions 6 and 7 without rewriting hashes | Event chain valid + No missing events | TAMPERED |
+
+`tests/test_tamper_matrix.py` runs every attack and asserts the verdict. Run `pytest tests/test_tamper_matrix.py -s` to see the printed matrix.
+
+### 2. Receipt binding strength
+
+A receipt's signature must cover *every* piece of context the credibility story depends on. Weak binding is the most common way these systems get dismissed — "the receipt says allow, but for which agent? under which intent? at which point in the chain?" — so every binding is asserted by a parametrized test.
+
+The signed material on every receipt covers:
+
+| Field | Binds |
+|-------|-------|
+| `agent_id` + `agent_public_key` | **which** agent (by stable id AND specific keypair) |
+| `session_id` | **which** execution of that agent |
+| `intent_hash` | **what** the agent publicly said it would do, before any action |
+| `action` + `tool` | **which** capability was attempted |
+| `args_hash` | **what** arguments were passed (SHA-256 over canonical JSON) |
+| `decision` + `policy` + `rule` | **what** the policy engine decided, under which version, by which rule |
+| `risk_score` + `reason` | the structured risk output |
+| `prior_event_hash` | **where** in the audit chain this receipt was issued (prevents lift-and-replay into a different run) |
+
+`tests/test_receipt_binding.py::test_receipt_binds` is parametrized over 12 mutations. Each test mints an AUTHENTIC receipt, mutates exactly one field, and asserts the signature no longer verifies. Run `pytest tests/test_receipt_binding.py -s` to see the printed binding-strength table.
+
+### 3. Adapter seam reality
+
+`AgentAdapter` is a Protocol; that alone is a claim. The proof is that a *second*, deliberately trivial adapter sits under the same Birkin control plane, produces the same kind of signed receipts, and verifies `AUTHENTIC` through the same offline verifier.
+
+`birkin/adapters/null_agent.py` is that second adapter. It exposes exactly one tool, `null.ping`, which has no side effect. The point is not the tool — the point is that the same `Engine`, `AuditLedger`, `AuthorizationReceipt`, `MerkleCheckpoint`, and `verify_package` flow that governs Hermes also governs NullAgent without a single branch.
+
+`tests/test_null_adapter.py::test_null_agent_and_hermes_produce_compatible_packages` runs both adapters through the same engine and asserts both verify `AUTHENTIC`:
+
+```
+============================================================
+CROSS-ADAPTER COMPATIBILITY — same engine, same verifier
+============================================================
+  hermes      ->  AUTHENTIC
+  null        ->  AUTHENTIC
+============================================================
+```
+
+The next adapter — an MCP stub, a managed runtime, a custom bot — drops in by implementing the same Protocol. Nothing else changes.
 
 ---
 
-## The Core Promise
+## Export package hygiene: the manifest
 
-**Birkin governs itself.** One command proves it:
+Every `RunPackage` carries a `manifest` as its first field. The verifier reads it *before* any signature check; if the manifest references a schema the verifier doesn't know, the verdict is `TAMPERED` (or `INVALID` if the manifest is missing entirely) — never silently `AUTHENTIC`.
 
-```bash
-./governance-check.sh
+```json
+{
+  "schema": "birkin.run.package@1",
+  "manifest": {
+    "evidence_format": "birkin.run.package@1",
+    "identity_scheme": "birkin.identity@1",
+    "receipt_scheme":  "birkin.receipt@1",
+    "audit_event_scheme": "birkin.audit@1",
+    "checkpoint_scheme": "birkin.checkpoint@1",
+    "policy_decision_scheme": "birkin.policy.decision@1",
+    "verifier_min_version": "0.1.0"
+  },
+  "birkin_version": "0.1.0",
+  "run_id": "...",
+  "..."
+}
 ```
 
-Output:
-```
-[1/5] Hermes Gateway — ✅ running, API responding
-[2/5] Audit Integrity — ✅ append-only, monotonic timestamps, 0 tampered entries
-[3/5] Skill Versioning — ✅ git-tracked, all changes committed, 6 skills deployed
-[4/5] Drift Detection — ✅ 5 benchmarks stable (cosine similarity ≥ 0.85)
-[5/5] Health Endpoint — ✅ JSON governance status, uptime 14 days
-
-✅ BIRKIN GOVERNANCE INTACT
-   All critical gates passed. Agent is operating within defined boundaries.
-```
-
-**That's it.** No faith required. Cryptographic proof.
-
----
-
-## 🛡️ The Tamper Test (Don't Take My Word For It)
-
-Most "audit logs" are append-only by convention. Birkin's audit log is **hash-chained at the row level** — every row carries `SHA-256(prev_hash || payload)`. Mutate a single byte and the next verification fails.
-
-Two layers of defense:
-1. **SQLite triggers** block `UPDATE` and `DELETE` on `audit_log` at the database layer.
-2. **Hash chain** catches mutation even when an attacker bypasses the triggers via file-level access.
-
-Prove it yourself in 5 seconds:
-
-```bash
-./tests/tamper-test.sh
-```
-
-```text
-🧪 Birkin tamper-detection test
-[1/6] ✅ schema initialized (table + triggers)
-[2/6] ✅ appended 5 hash-chained rows
-[3/6] ✅ clean chain verifies PASS
-[4/6] ✅ trigger blocks UPDATE (append-only enforced at DB layer)
-[5/6] 🔓 simulated attacker: dropped triggers, rewrote row 3
-[6/6] ✅ tamper DETECTED by hash chain:
-       ❌ CHAIN BROKEN at row 3 (row_tampered)
-          row_hash mismatch (expected ad2548c43ed6..., got 9f1894ea0f03...)
-
-🛡️  PASS — Birkin's audit chain catches mutation even when triggers are bypassed.
-```
-
-Source: [`scripts/audit-init.sql`](scripts/audit-init.sql) · [`scripts/audit-append.py`](scripts/audit-append.py) · [`scripts/verify-chain.py`](scripts/verify-chain.py) · [`tests/tamper-test.sh`](tests/tamper-test.sh)
-
----
-
-## Why This Matters
-
-| Problem | Existing Agents | Birkin |
-|---------|-----------------|--------|
-| **Auditability** | "Trust me, I logged it" | **SHA-256 hash-chained SQLite.** Every row links to the previous. Mutate one byte → chain breaks → CI fails. Proven by `tests/tamper-test.sh`. |
-| **Reproducibility** | Weights shift randomly | Git-versioned SKILL.md files. `git diff` the agent's brain. |
-| **Behavior Drift** | Degrades silently | Weekly cosine similarity checks. Flags if < 0.85. |
-| **Cost** | $100-300/mo (Claude API + infra) | **Free.** Birkin itself costs nothing. Your only spend is whatever your Hermes already uses for LLM calls. |
-| **Control Surface** | Laptop SSH or web dashboard | iPhone PWA. Voice input. Telegram alerts. |
-| **Safety Bounds** | Hope | 5-gate governance validation. Kill switches. Lockdown mode. |
-
----
-
-## Governance Pipeline
-
-Birkin's heart is its **5-gate governance validation**:
-
-```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ GATE 1       │    │ GATE 2       │    │ GATE 3       │    │ GATE 4       │    │ GATE 5       │
-│              │    │              │    │              │    │              │    │              │
-│ Process      │───▶│ Audit        │───▶│ Skill        │───▶│ Drift        │───▶│ Health       │
-│ Running?     │    │ Integrity    │    │ Versioning   │    │ Detection    │    │ Endpoint     │
-│              │    │              │    │              │    │              │    │              │
-│ Hermes PID?  │    │ Append-only? │    │ Git-signed?  │    │ Cosine ≥0.85?│    │ /health 200? │
-│ API 200?     │    │ No overwrites?│   │ No unstaged? │    │ No divergence│    │ JSON valid?  │
-└──────┬───────┘    └──────┬───────┘    └──────┬───────┘    └──────┬───────┘    └──────┬───────┘
-       │                   │                   │                   │                   │
-       ✅                  ✅                  ✅                  ✅                  ✅
-```
-
-Each gate is cryptographic. Failure stops the agent and alerts you immediately.
+`tests/test_manifest.py` proves that an unknown receipt scheme, a missing manifest key, or a missing manifest entirely all flip the verdict. Future Birkin versions that change a schema MUST bump the corresponding manifest entry; otherwise old verifiers will refuse to verify the new package rather than misinterpreting the bytes.
 
 ---
 
 ## Architecture
 
-Birkin sits **between you and your existing Hermes Agent**. You bring Hermes; Birkin adds the iPhone control surface and the governance layer.
-
 ```
-                      ┌─────────────────────┐
-                      │  YOUR HERMES AGENT  │   ← you already run this
-                      │  (anywhere, any host)│      (Nous Research)
-                      └──────────┬──────────┘
-                                 │
-                                 │  OpenAI-compatible /v1
-                                 ▼
-        ┌────────────────────────────────────────────────┐
-        │                BIRKIN (this repo)              │
-        │  ┌──────────────────┐   ┌────────────────────┐ │
-        │  │  Open WebUI      │   │  Governance Layer  │ │
-        │  │  (Docker)        │   │                    │ │
-        │  │  • iPhone PWA    │   │  • SHA-256 audit   │ │
-        │  │  • Voice input   │   │    chain           │ │
-        │  │  • Custom logo   │   │  • Drift detection │ │
-        │  └──────────────────┘   │  • Kill switches   │ │
-        │  ┌──────────────────┐   │  • 5 gates         │ │
-        │  │  Health Endpoint │◄──┤  • Tamper test     │ │
-        │  │  /health JSON    │   │  • Telegram alerts │ │
-        │  └──────────────────┘   └────────────────────┘ │
-        └────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-                        📱  YOUR iPHONE
-                   (Safari → Add to Home Screen)
-```
-
-Everything runs on your machine by default. Optional: deploy to a remote VPS with Cloudflare Tunnel if you want PWA access from outside your LAN — see [`deploy.sh`](deploy.sh).
-
----
-
-## 🚀 Optional: Deploy to a remote VPS (~€4.51/mo)
-
-If you want to reach the PWA from outside your home network, [`deploy.sh`](deploy.sh) provisions a Hetzner CX22 + Cloudflare Tunnel for you. This path is **optional** — most users run Birkin locally and use Tailscale or their home network for phone access.
-
-```bash
-source deploy.env && ./deploy.sh \
-  --hetzner-token   "$HETZNER_TOKEN"   \
-  --cf-token        "$CF_TOKEN"        \
-  --domain          "$DOMAIN"          \
-  --openrouter-key  "$OPENROUTER_KEY"  \
-  --telegram-token  "$TELEGRAM_TOKEN"  \
-  --telegram-chat   "$TELEGRAM_CHAT"
+┌──────────────────────────────────────────────────────────────────────┐
+│                              Agent runtime                            │
+│                       (Hermes today, others tomorrow)                 │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │  AgentAdapter (Protocol)
+                               │  make_identity / declare_intent /
+                               │  build_action_request / execute
+                               ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                              Birkin Engine                            │
+│  ┌────────────┐   ┌──────────────┐   ┌──────────────────────────┐   │
+│  │  Identity   │   │ PolicyEngine │   │      AuditLedger          │   │
+│  │  (passport) │──▶│              │──▶│ prev_hash → event_hash    │   │
+│  └────────────┘   │  structured   │   │ signed events             │   │
+│                   │  decisions    │   │ MerkleCheckpoint          │   │
+│                   └──────┬───────┘   └──────────────────────────┘   │
+│                          │                                          │
+│                          ▼                                          │
+│               ┌──────────────────────┐                              │
+│               │ AuthorizationReceipt  │  (signed, portable)         │
+│               └──────────────────────┘                              │
+└──────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼  export
+┌──────────────────────────────────────────────────────────────────────┐
+│                          RunPackage (.json)                           │
+│  identity · policy · events · receipts · checkpoints                  │
+│  birkin verify  →  AUTHENTIC | TAMPERED | INVALID                     │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-Read the `VERIFY:` comments at the top of `deploy.sh` before running — this path is alpha.
+## Data models (canonical JSON shapes)
 
----
+### AgentIdentity (passport)
 
-## 📱 Control from Your iPhone
-
-### 1. Add to Home Screen
-
-- Open Safari → `https://birkin.yourdomain.com`
-- Tap **Share** → **Add to Home Screen**
-- Name it "Birkin"
-- Tap the icon — it opens full-screen like a native app
-
-### 2. Use Voice Input
-
-- Tap the **microphone icon** in Open WebUI
-- Speak: *"Run the sourcing intelligence skill and report new peptide suppliers this week"*
-- Agent thinks → streams Markdown results
-- Everything logged to append-only audit
-
-### 3. Get Telegram Alerts
-
-When governance fails, Birkin posts to Telegram immediately:
-
-```
-🚨 GOVERNANCE ALERT
-
-❌ Drift check FAILED
-   Benchmark #3 diverged: cosine similarity 0.71 < 0.85
-   
-   Possible causes:
-   - New skill deployed without baseline update
-   - Model behavior changed
-   - Temperature/sampling config drifted
-   
-Audit log: https://health.birkin.yourdomain.com/health
-Skill diff: ssh -i ... birkin@... ./scripts/skill-diff.sh
-
-[Acknowledge] [Run governance-check]
-```
-
----
-
-## 🏗️ Build Your Own Skills
-
-Every skill is a `SKILL.md` file with:
-- **YAML frontmatter** — name, description, version, triggers, tools needed, failure recovery steps
-- **Markdown body** — execution logic, delivery format, error handling
-
-### Skill Template
-
-```markdown
----
-name: my-skill
-description: What this skill does and when to trigger it
-version: 1.0.0
-triggers:
-  - cron: "0 9 * * *"
-    description: Every day at 9 AM
-tools_needed:
-  - web_search
-  - file_write
-  - terminal
-failure_recovery_steps:
-  - "If X fails, check Y"
-  - "Verify connectivity: curl https://api.example.com"
-  - "Manually trigger: hermes run --skill my-skill"
----
-
-# My Skill
-
-## Overview
-Clear explanation of what this skill does.
-
-## Execution Steps
-1. Step one
-2. Step two
-3. Step three
-
-## Delivery
-How results are sent (Telegram, file, stdout, etc.)
-
-## Error Handling
-What happens if something breaks.
-```
-
-### Deploy Your Skill
-
-```bash
-cd ~/.hermes/skills
-cat > my-skill.md <<'SKILL'
----
-name: my-skill
-...
----
-# My Skill
-...
-SKILL
-
-git add my-skill.md
-git commit -m "Add my-skill v1.0.0"
-
-# Hermes auto-discovers and loads it
-hermes run --skill my-skill
-```
-
----
-
-## 📊 Example Skills
-
-The repo ships **6 SKILL.md files** I actually run on my own Birkin — useful as templates more than turnkey features (your sourcing, your calendar, your services are different). Drop them into your Hermes `~/.hermes/skills/` directory and edit, or write your own following the [official Hermes SKILL.md spec](https://hermes-agent.nousresearch.com/docs/skills/).
-
-| Skill | Purpose | Trigger | Schedule |
-|-------|---------|---------|----------|
-| **daily-brief** | Morning intelligence (emails, calendar, sourcing, health, news, priority) | Manual or cron | 7 AM ET daily |
-| **sourcing-intel** | Search 1688 + Korean suppliers for new products | Manual or cron | Monday 8 AM ET |
-| **competitor-monitor** | Track NYC aesthetic clinics for website/pricing changes | Manual or cron | Sunday 5 PM ET |
-| **directora-health** | Health-check pattern against a separate service of mine (see [Directora](https://scrutexity.com)) — useful as a template for any external API health skill | Manual or cron | Every 6 hours |
-| **code-governance** | Post-push validation: tests, contracts, locks, scripts | Webhook or manual | On git push to main |
-| **send-telegram-alert** | Telegram alerting helper for audit events, failures, cost reports | Manual or triggered | On audit events |
-
-All include Telegram alerting hooks, error recovery, and audit logging.
-
----
-
-## 🛡️ Safety Bounds & Kill Switches
-
-### Safety Bounds Are Cryptographic
-
-Birkin doesn't **trust** itself. It **proves** its integrity every hour:
-
-```bash
-$ ./governance-check.sh
-✅ BIRKIN GOVERNANCE INTACT
-```
-
-If ANY gate fails:
-1. Agent logs the breach to audit
-2. Telegram alert fires immediately
-3. `agent-stop.sh` is suggested
-4. Manual investigation required
-
-### Kill Switch #1: Graceful Stop
-
-```bash
-./agent-stop.sh
-```
-
-Stops Hermes + Open WebUI + health endpoint cleanly. Does NOT delete audit logs or skills.
-
-### Kill Switch #2: Network Lockdown
-
-```bash
-./agent-lockdown.sh
-```
-
-Restricts outbound to ONLY:
-- OpenRouter API
-- Cloudflare Tunnel
-- Telegram Bot API
-- GitHub (for skill updates)
-- DNS
-
-Blocks all arbitrary HTTP calls. Blocks `web_research` tool (intentionally).
-
----
-
-## 💰 Cost
-
-**Birkin itself is free.** It runs in Docker on hardware you already own.
-
-Your LLM cost is whatever your Hermes Agent already spends — Birkin doesn't add any model calls.
-
-If you want PWA access from outside your LAN, the *optional* `deploy.sh` provisions:
-
-| Service | Monthly | Notes |
-|---------|---------|-------|
-| Hetzner CX22 | ~€4.51 | 2 vCPU, 4 GB RAM, 40 GB SSD |
-| Cloudflare Tunnel | $0 | Free tier |
-| Domain | optional | Use a subdomain you already own |
-
-That's the upper bound. Local-only users pay nothing.
-
----
-
-## 🎯 Governance Philosophy
-
-**Birkin treats agent infrastructure like clinical systems:**
-
-- **Append-only audit logs** — every action is written once, cryptographically ordered, never modified
-- **Reproducible behavior** — git-versioned SKILL.md means you can always `git log` and `git diff` the agent's decision-making
-- **Drift detection** — weekly cosine similarity benchmarks catch behavior changes before they cascade
-- **Server-authoritative timestamps** — UTC from server clock, no client trust
-- **Automated compliance** — one command proves governance integrity
-- **Daily backups** — encrypted 7-day retention
-
-**The thesis:** If you can govern clinical infrastructure with cryptographic proof, you can govern an AI agent the same way.
-
----
-
-## 🔒 Security & Hardening
-
-**Local mode (default):** runs on your machine, no inbound ports exposed to the internet, no API keys held by Birkin itself (your Hermes holds them).
-
-**Remote-VPS mode (optional, via `deploy.sh`):**
-- Only ports 443 (Cloudflare Tunnel) and 22 (SSH) open to the internet
-- SSH key-only auth, no password login
-- `fail2ban` bans after 3 failed SSH attempts
-- `unattended-upgrades` for daily security patches
-- Non-root user runs the services
-- API keys held in systemd env, not plain config files
-- Cloudflare WAF for DDoS protection
-- UFW firewall, explicit allow rules only
-
----
-
-## 🧠 Governance Commands
-
-From the server (SSH in or via scripts/):
-
-```bash
-# Full governance validation
-./governance-check.sh
-
-# Audit log queries
-./scripts/send_telegram_alert.py                  # last 20 actions
-./scripts/send_telegram_alert.py --today          # today only
-./scripts/send_telegram_alert.py --failed         # failed actions
-./scripts/send_telegram_alert.py --cost           # monthly cost estimate
-./scripts/send_telegram_alert.py --skill sourcing-intel  # filter by skill
-
-# Skill change history
-./scripts/skill-diff.sh                 # changes in last 7 days
-./scripts/skill-diff.sh --since 2026-05-01  # custom date
-./scripts/skill-diff.sh --skill daily-brief  # one skill
-
-# Drift detection
-./drift-check.sh                # run 5 benchmarks
-./drift-check.sh --update-baseline  # save as new baseline
-
-# Kill switches
-./agent-stop.sh                 # graceful shutdown
-./agent-lockdown.sh             # network lockdown
-./agent-lockdown.sh --unlock    # restore normal
-```
-
----
-
-## 📡 Health Endpoint
-
-Birkin exposes a JSON governance status on port 9999:
-
-```bash
-curl https://health.birkin.yourdomain.com/health
-```
-
-Response:
 ```json
 {
-  "agent_status": "healthy",
-  "uptime_seconds": 432891,
-  "last_action_timestamp": "2026-05-18T09:23:00Z",
-  "skill_count": 6,
-  "audit_log_entries": 1427,
-  "drift_check_last_run": "2026-05-18T06:00:00Z",
-  "drift_check_status": "PASS",
-  "governance_check_last_run": "2026-05-18T08:15:00Z",
-  "governance_check_status": "INTACT"
+  "schema_version": "birkin.identity@1",
+  "agent_id": "demo-agent-01",
+  "public_key": "base64-ed25519",
+  "runtime": "hermes-0.1.0",
+  "policy": "default@1.0.0",
+  "session_id": "uuid",
+  "issued_at": "2026-08-21T...",
+  "expires_at": "2026-08-21T...",
+  "signature": "base64-ed25519 over the canonical subset above"
 }
 ```
 
-Parse this in your monitoring, dashboards, or Telegram bots.
+### PolicyDecision
+
+```json
+{
+  "schema_version": "birkin.policy.decision@1",
+  "decision": "allow",
+  "policy": "default@1.0.0",
+  "rule": "fs.write.sandbox.allow",
+  "risk_score": 20,
+  "reason": "Writes to the sandboxed /tmp/birkin/ directory are permitted."
+}
+```
+
+### AuthorizationReceipt
+
+```json
+{
+  "schema_version": "birkin.receipt@1",
+  "receipt_id": "uuid",
+  "agent_id": "demo-agent-01",
+  "agent_public_key": "base64-ed25519",
+  "session_id": "uuid",
+  "intent_hash": "sha256-of-declared-intent-or-null",
+  "action": "tool.invoke",
+  "tool": "fs.write",
+  "args_hash": "sha256-of-canonical-args",
+  "decision": "allow",
+  "policy": "default@1.0.0",
+  "rule": "fs.write.sandbox.allow",
+  "risk_score": 20,
+  "reason": "...",
+  "prior_event_hash": "sha256-of-most-recent-audit-event-at-issue-time",
+  "issued_at": "...",
+  "signature": "base64-ed25519 by the Birkin control plane over the above fields"
+}
+```
+
+### AuditEvent
+
+```json
+{
+  "schema_version": "birkin.audit@1",
+  "event_id": "uuid",
+  "sequence": 7,
+  "timestamp": "...",
+  "type": "tool.executed",
+  "actor": "demo-agent-01",
+  "session_id": "uuid",
+  "receipt_id": "uuid",
+  "prev_hash": "sha256-of-prior-event.event_hash",
+  "payload": { "...": "..." },
+  "event_hash": "sha256-of-canonical-subset",
+  "signature": "base64-ed25519 over event_hash"
+}
+```
+
+### MerkleCheckpoint
+
+```json
+{
+  "schema_version": "birkin.checkpoint@1",
+  "checkpoint_id": "uuid",
+  "sequence_range": [1, 17],
+  "leaf_count": 17,
+  "root": "sha256-hex-of-merkle-root",
+  "anchors": [{"kind": "local"}],
+  "timestamp": "...",
+  "signature": "base64-ed25519 by the Birkin control plane"
+}
+```
+
+### RunPackage
+
+```json
+{
+  "schema": "birkin.run.package@1",
+  "manifest": {
+    "evidence_format": "birkin.run.package@1",
+    "identity_scheme": "birkin.identity@1",
+    "receipt_scheme":  "birkin.receipt@1",
+    "audit_event_scheme": "birkin.audit@1",
+    "checkpoint_scheme": "birkin.checkpoint@1",
+    "policy_decision_scheme": "birkin.policy.decision@1",
+    "verifier_min_version": "0.1.0"
+  },
+  "birkin_version": "0.1.0",
+  "run_id": "uuid",
+  "exported_at": "...",
+  "birkin_public_key": "base64-ed25519",
+  "identity": { /* AgentIdentity */ },
+  "policy": {"name": "default", "version": "1.0.0", "sha256": "...", "spec": { /* ... */ }},
+  "intent": {"text": "...", "declared_at": "...", "extras": {}},
+  "events": [ /* AuditEvent[] */ ],
+  "receipts": [ /* AuthorizationReceipt[] */ ],
+  "checkpoints": [ /* MerkleCheckpoint[] */ ],
+  "final_checkpoint": { /* MerkleCheckpoint */ },
+  "notes": "optional human-readable note"
+}
+```
 
 ---
 
-## 🤝 Contributing
+## Verifier guarantees
 
-Want to add a skill? Fork the repo and submit a PR.
+`birkin verify` runs **nine** independent checks. The verdict is `AUTHENTIC` only if all nine pass.
 
-**Skill contribution checklist:**
-- [ ] SKILL.md follows template (YAML frontmatter + Markdown body)
-- [ ] Includes `failure_recovery_steps` section
-- [ ] Tested locally (`hermes run --skill your-skill`)
-- [ ] Skill version bumped (semantic versioning)
-- [ ] Git commit with clear message
-- [ ] Governance check passes (`./governance-check.sh`)
+| # | Check | What it proves |
+|---|-------|----------------|
+| 0 | Manifest + schema versions | The package's manifest declares schemas this verifier knows. Future format changes break loudly, not silently. |
+| 1 | Event chain valid | No event was inserted, removed, or mutated (`prev_hash` linkage + `event_hash` self-consistency). |
+| 2 | Signatures valid | Every event, receipt, and checkpoint is genuinely signed by the claimed Birkin control-plane key. |
+| 3 | Policy version verified | The policy spec embedded in the package hashes to the value the run claims (`policy.sha256`). |
+| 4 | Identity verified | The agent passport's self-signature verifies — the agent possessed the private key for the public key it claimed. |
+| 5 | No missing events | Sequence numbers are dense `1..N`. |
+| 6 | Checkpoint matches | The Merkle root recomputed from the in-range event hashes equals the signed checkpoint root, and the checkpoint signature is valid. |
+| 7 | Authorization receipts valid | Every side-effecting audit event references a real, signature-valid receipt. |
+| 8 | Identity bound to run | The identity's `public_key` matches what `session.start` recorded (signed by Birkin, cannot be tampered with), AND every receipt's `agent_public_key` / `agent_id` / `session_id` matches the package identity, AND every receipt's `prior_event_hash` exists in the audit chain. Catches identity-swap and lift-and-replay attacks. |
 
-**Community skills roadmap:**
-- [ ] Slack integration for alerts
-- [ ] Notion page automation
-- [ ] LinkedIn job tracker
-- [ ] GitHub PR reviewer
-- [ ] Stripe revenue dashboard
-
----
-
-## 📚 Documentation
-
-- [deploy.sh](deploy.sh) — Hetzner + Cloudflare Tunnel deployment script (read the VERIFY notices before running)
-- [CONTRIBUTING.md](CONTRIBUTING.md) — how to add skills and contribute
-- [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) — well-commented skill template
-- [SOCIAL.md](SOCIAL.md) — X thread templates and marketing copy
+The output is deterministic and identical across machines and runs.
 
 ---
 
-## 🎯 Next Steps
+## CLI
 
-1. **Install** (1 minute)
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/NickAiNYC/Birkin/main/install.sh | bash
-   ```
+```text
+birkin version                       Print version.
+birkin keys                          Generate a fresh Birkin control-plane Ed25519 keypair.
+birkin run --tool fs.write \         Run a single tool under Birkin governance and export a run package.
+        --args '{"path":"/tmp/birkin/x","data":"hi"}' \
+        --agent-id demo --out run.json
+birkin demo [--out run.json]         Run the end-to-end vertical slice and print the verdict.
+birkin attack {1|2|3}                Run one of the three attack demos.
+birkin verify <package.json>         Offline-verify a run package.
+```
 
-2. **Prove it works** (5 seconds)
-   ```bash
-   ./tests/tamper-test.sh
-   ```
+## Library
 
-3. **Add to iPhone** (1 minute)
-   - Safari → `http://<your-machine>:3000` → Share → Add to Home Screen
+```python
+from birkin import Engine, HermesAdapter, SigningKey, load_default_policy, verify_package
 
-4. **Write your own skill** (30 minutes)
-   - Drop a `SKILL.md` into your Hermes skills directory ([spec](https://hermes-agent.nousresearch.com/docs/skills/))
-   - Restart Hermes — it auto-discovers
-   - Verify with `./governance-check.sh`
+birkin_sk = SigningKey.generate()             # or load from env
+policy    = load_default_policy()
+adapter   = HermesAdapter()
+engine    = Engine(birkin_signing_key=birkin_sk, policy=policy, adapter=adapter)
 
-5. **Optional: deploy to VPS for remote PWA access**
-   - See [`deploy.sh`](deploy.sh) — read the VERIFY notices first
+identity = adapter.make_identity(agent_id="my-bot", policy_ref=policy.ref)
+engine.start_session(identity)
+engine.declare_intent(identity, adapter.declare_intent(identity, "summarize the report"))
+
+req     = adapter.build_action_request(tool="fs.write",
+                                       args={"path": "/tmp/birkin/x", "data": "hi"})
+receipt = engine.attempt_action(identity, req)
+if receipt.decision == "allow":
+    engine.execute(identity, req, receipt)
+
+engine.checkpoint()
+engine.end_session(identity)
+pkg = engine.export(identity=identity)
+
+report = verify_package(pkg)
+assert report.verdict == "AUTHENTIC"
+```
 
 ---
 
-## 📄 License
+## Tests
 
-MIT License — see [LICENSE](LICENSE)
+```bash
+pip install -e ".[dev]"
+pytest -q
+```
 
-**Use it. Fork it. Build on it. Ship it.**
+The suite (40 tests across 5 files) covers:
+
+* **`test_vertical_slice.py`** — crypto round-trips, model self-verification, policy evaluation for every decision type, the end-to-end AUTHENTIC path, and tamper detection (event payload mutation, receipt mutation).
+* **`test_tamper_matrix.py`** — the six-attack tamper surface matrix (signature flip, identity rewrite, policy swap, checkpoint root rewrite, missing event, reordered event).
+* **`test_receipt_binding.py`** — 12-binding strength matrix proving every receipt field is cryptographically bound.
+* **`test_null_adapter.py`** — the second-adapter proof (Hermes + NullAgent both AUTHENTIC via the same engine + verifier).
+* **`test_manifest.py`** — manifest + schema-version gate (unknown scheme, missing key, missing manifest).
 
 ---
 
-## 🙏 Built By
+## Project layout
 
-**Nick** — [@NickAiNYC](https://github.com/NickAiNYC)
-
-Birkin is the open-source foundation. If you're running governed infrastructure in the wild, let me know.
+```
+birkin/
+├── birkin/
+│   ├── __init__.py          # Public API surface
+│   ├── crypto.py            # Ed25519, canonical JSON, SHA-256, Merkle root
+│   ├── models.py           # AgentIdentity, Receipt, AuditEvent, Checkpoint, RunPackage, PACKAGE_MANIFEST
+│   ├── policy.py           # PolicySpec + structured decisions
+│   ├── adapter.py          # AgentAdapter Protocol + BaseAdapter
+│   ├── adapters/
+│   │   ├── hermes.py       # First concrete adapter
+│   │   └── null_agent.py   # Second adapter — proves the seam
+│   ├── audit.py            # AuditLedger + MerkleCheckpoint issuance
+│   ├── engine.py           # The control plane
+│   ├── verify.py           # Offline verifier (9 checks)
+│   └── cli.py              # `birkin` command
+├── policies/
+│   └── default.policy.json
+├── demos/
+│   ├── end_to_end.py       # The 60-second AUTHENTIC demo
+│   └── attacks.py          # The three attacks
+├── tests/
+│   ├── test_vertical_slice.py     # End-to-end + tamper detection
+│   ├── test_tamper_matrix.py     # 6-attack tamper surface matrix
+│   ├── test_receipt_binding.py   # 12-binding strength matrix
+│   ├── test_null_adapter.py      # Second-adapter proof
+│   └── test_manifest.py          # Manifest + schema-version gate
+├── scripts/
+│   ├── demo_all.py         # End-to-end + all attacks in one shot
+│   └── ci_smoke.sh         # The CI gate (7 fail-fast checks)
+├── .github/workflows/ci.yml # GitHub Actions: runs scripts/ci_smoke.sh on every push/PR
+├── pyproject.toml
+├── LICENSE
+└── README.md
+```
 
 ---
 
-<div align="center">
+## Scope locks — what is *deliberately deferred to the next cycle*
 
-**⭐ If you believe AI agents should be governed like production systems, star this repo.**
+This slice is intentionally narrow. The following are designed-in seams, not missing features:
 
-**🍴 If you're adding a skill, fork and PR.**
+* **Multi-bot roster + governed groups + war-room PWA** — `AgentAdapter` already supports multiple adapters (Hermes + NullAgent today); the group / war-room layer is not built.
+* **Full MCP Gateway** — the seam is `AgentAdapter`; an MCP adapter is the natural next addition. NullAgent proves the seam; MCP is the production adapter. Only what the vertical slice needs is implemented.
+* **External anchoring** — `MerkleCheckpoint.anchors` is a `list[dict]` today with `{"kind": "local"}` only. A transparency-log / timestamp-authority / on-chain anchor is a fill-in-the-list change.
+* **Policy Replay UI** — events are already structured for replay; the UI is not built.
+* **Attack Lab productization** — the three attacks in `demos/attacks.py` plus the six-attack tamper matrix in `tests/test_tamper_matrix.py` are evidence, not a productized attack lab.
+* **Supply-chain hardening, OpenTelemetry, full operator surface** — out of scope until the slice is undeniable.
+* **Policy versioning server, dynamic policy hot-reload** — policies are pinned per run via `policy.sha256` in the export package.
 
-**🐦 If this changes how you think about agent safety, tweet [@NickAiNYC](https://x.com/nickaltstein).**
+### Sacred tests — release blockers
 
-</div>
+Two test files encode the closed credibility surface that makes Birkin worth taking seriously:
+
+* `tests/test_tamper_matrix.py` — six realistic tampering attacks; every one must verify as `TAMPERED` (or `INVALID`), never `AUTHENTIC`.
+* `tests/test_receipt_binding.py` — twelve receipt fields, each cryptographically bound into the signed material; mutating any one alone must invalidate the signature.
+
+**Any PR that removes, weakens, skips, or modifies a test in these two files in a way that accepts a previously-rejected mutation as `AUTHENTIC` is a release blocker.** See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full rule and the design-discussion protocol for the rare case where a future schema change genuinely requires a previously-tampered mutation to verify as `AUTHENTIC`.
+
+## Extension points
+
+* **New runtime?** Implement `birkin.adapter.AgentAdapter`. Everything else is unchanged.
+* **New tool?** Register it on the adapter's tool registry; the policy engine already dispatches by `tool` name.
+* **New policy?** Drop a JSON file in `policies/` and pass `--policy` to `birkin run` or instantiate `PolicySpec.load(...)`.
+* **External anchoring?** Subclass `MerkleCheckpoint` and append to `anchors`; the verifier only checks the signature over what is there.
+* **A second Birkin deployment / federation?** Each deployment has its own `birkin_public_key`; receipts verify against whichever key issued them. The package format is already portable.
+
+## Design principles
+
+1. **The receipt is the primitive.** Everything else exists to make receipts unforgeable.
+2. **The verifier needs nothing but the package.** Offline verification is non-negotiable.
+3. **Default deny.** Any tool not explicitly allowed is blocked. No silent falls-through.
+4. **Sign what you mean.** Every signature covers an explicit field set, so adding a field does not retroactively break old signatures.
+5. **The chain is the evidence.** `prev_hash` + Merkle checkpoint means historical state is frozen at checkpoint time.
+6. **Local-first.** Birkin does not phone home. Your agent's behavior is your evidence.
+7. **MIT-licensed.** Fork it, embed it, audit it.
+
+## License
+
+MIT. See `LICENSE`.
+
+---
+
+Birkin is not finished. It is undeniable in this slice. The next cycle adds the rest of the destination — multi-bot groups, full MCP gateway, policy replay, external anchoring — on top of this evidence plane, not beside it.

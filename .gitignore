@@ -1,34 +1,52 @@
-# Secrets — NEVER commit
-deploy.env
-*.env
-.env*
-*.key
-*.pem
-credentials.json
-service-account.json
 
 # Audit data (generated at runtime)
-audit.db
-**/audit.db
-
-# Drift results (generated at runtime)
-drift/
-**/drift/
-
+# Birkin artifacts (do not commit exported run packages)
+# Bytecode
 # Docker volumes
-data/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Python
-__pycache__/
-*.pyc
-
+# Drift results (generated at runtime)
+# Env
 # IDE
-.idea/
-.vscode/
-*.swp
+# OS
+# Python
+# Secrets — NEVER commit
+# Virtual envs
+# iCloud conflict copies (macOS)
+* 2.*
+* 3.*
+* 4.*
+*$py.class
+**/audit.db
+**/drift/
+*.birkin.json
+*.egg-info/
+*.env
+*.key
+*.pem
+*.py[cod]
+*.pyc
 *.swo
+*.swp
+*~
+.DS_Store
+.eggs/
+.env
+.env*
+.envrc
+.idea/
+.venv/
+.vscode/
+/tmp/birkin/
+Thumbs.db
+__pycache__/
 agentv1/
+audit.db
+build/
+credentials.json
+data/
+deploy.env
+dist/
+drift/
+env/
+run_package*.json
+service-account.json
+venv/
