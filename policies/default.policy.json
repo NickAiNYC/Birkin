@@ -1,0 +1,77 @@
+{
+  "name": "default",
+  "version": "1.0.0",
+  "description": "Birkin default policy. Safe-by-default: shell.exec is forbidden, fs.write is sandboxed, HTTP side-effects require approval.",
+  "rules": [
+    {
+      "id": "shell.exec.deny",
+      "match": { "tool": "shell.exec" },
+      "decision": "deny",
+      "risk_score": 95,
+      "reason": "Shell execution is forbidden under the default policy. It is the highest-risk side effect an agent can attempt."
+    },
+    {
+      "id": "fs.write.sandbox.allow",
+      "match": { "tool": "fs.write", "path_prefix": ["/tmp/birkin/"] },
+      "decision": "allow",
+      "risk_score": 20,
+      "reason": "Writes to the sandboxed /tmp/birkin/ directory are permitted."
+    },
+    {
+      "id": "fs.write.system.deny",
+      "match": { "tool": "fs.write", "path_prefix": ["/etc/", "/root/", "/usr/", "/var/", "/sys/", "/proc/", "/boot/"] },
+      "decision": "deny",
+      "risk_score": 90,
+      "reason": "Writes to system paths are blocked to prevent privilege escalation via filesystem tampering."
+    },
+    {
+      "id": "fs.write.elsewhere.require_approval",
+      "match": { "tool": "fs.write" },
+      "decision": "require_approval",
+      "risk_score": 70,
+      "reason": "Writes outside the sandbox require human approval."
+    },
+    {
+      "id": "fs.read.allow",
+      "match": { "tool": "fs.read" },
+      "decision": "allow",
+      "risk_score": 15,
+      "reason": "Reads are generally safe under the default policy."
+    },
+    {
+      "id": "http.get.allow",
+      "match": { "tool": "http.get" },
+      "decision": "allow",
+      "risk_score": 30,
+      "reason": "GET requests are permitted; they are not side-effecting in the HTTP sense."
+    },
+    {
+      "id": "http.post.require_approval",
+      "match": { "tool": "http.post" },
+      "decision": "require_approval",
+      "risk_score": 75,
+      "reason": "HTTP side-effects require approval under the default policy."
+    },
+    {
+      "id": "db.query.drop.deny",
+      "match": { "tool": "db.query" },
+      "decision": "require_approval",
+      "risk_score": 65,
+      "reason": "Database queries require approval under the default policy."
+    },
+    {
+      "id": "null.ping.allow",
+      "match": { "tool": "null.ping" },
+      "decision": "allow",
+      "risk_score": 5,
+      "reason": "null.ping has no side effect; it exists to prove the AgentAdapter seam."
+    },
+    {
+      "id": "default.deny",
+      "match": {},
+      "decision": "deny",
+      "risk_score": 100,
+      "reason": "Default deny: any tool not explicitly allowed is blocked."
+    }
+  ]
+}
