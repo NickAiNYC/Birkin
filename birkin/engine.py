@@ -287,6 +287,53 @@ class Engine:
         self._receipts.append(new_receipt)
         return new_receipt
 
+    def reject(
+        self,
+        identity: AgentIdentity,
+        receipt: AuthorizationReceipt,
+        *,
+        rejected_by: str,
+        reason: str,
+    ) -> AuthorizationReceipt:
+        """Convert a ``require_approval`` receipt into an explicit ``deny`` receipt.
+
+        The rejection is recorded as an audit alert event, and a new signed
+        AuthorizationReceipt with decision='deny' is issued.
+        """
+        if receipt.decision != "require_approval":
+            raise ValueError(
+                f"cannot reject receipt with decision={receipt.decision}"
+            )
+        self.ledger.append(
+            type="alert",
+            actor=identity.agent_id,
+            session_id=identity.session_id,
+            receipt_id=receipt.receipt_id,
+            payload={
+                "event": "approval.denied",
+                "rejected_by": rejected_by,
+                "reason": reason,
+            },
+        )
+        new_receipt = AuthorizationReceipt(
+            agent_id=receipt.agent_id,
+            agent_public_key=receipt.agent_public_key,
+            session_id=receipt.session_id,
+            intent_hash=receipt.intent_hash,
+            action=receipt.action,
+            tool=receipt.tool,
+            args_hash=receipt.args_hash,
+            decision="deny",
+            policy=receipt.policy,
+            rule=receipt.rule,
+            risk_score=receipt.risk_score,
+            reason=f"denied by {rejected_by}: {reason}",
+            prior_event_hash=self.ledger.last_hash,
+        )
+        new_receipt.sign(self.birkin_signing_key)
+        self._receipts.append(new_receipt)
+        return new_receipt
+
     # --- execution ------------------------------------------------------
     def execute(
         self,

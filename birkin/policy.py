@@ -161,23 +161,31 @@ def _match_rule(
 
     path_prefix = match.get("path_prefix")
     if path_prefix is not None:
-        path = args.get("path")
-        if not isinstance(path, str):
+        raw_path = args.get("path")
+        if not isinstance(raw_path, str):
             return False
-        if not any(path.startswith(p) for p in path_prefix):
+        # Prevent path traversal attacks (e.g. /tmp/birkin/../../etc/shadow)
+        norm_path = os.path.normpath(raw_path)
+        if not any(norm_path.startswith(os.path.normpath(p)) for p in path_prefix):
             return False
 
     host_in = match.get("host_in")
     if host_in is not None:
         url = args.get("url", "") or ""
-        if not any(h in url for h in host_in):
+        try:
+            from urllib.parse import urlparse
+            parsed_host = (urlparse(url).hostname or "").lower()
+            if not any(h.lower() == parsed_host or parsed_host.endswith("." + h.lower()) for h in host_in):
+                return False
+        except Exception:
             return False
 
     # Negative matchers (allow-list / deny-list)
     path_not_prefix = match.get("path_not_prefix")
     if path_not_prefix is not None:
-        path = args.get("path", "")
-        if any(path.startswith(p) for p in path_not_prefix):
+        raw_path = args.get("path", "")
+        norm_path = os.path.normpath(raw_path) if isinstance(raw_path, str) else ""
+        if any(norm_path.startswith(os.path.normpath(p)) for p in path_not_prefix):
             return False
 
     return True

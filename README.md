@@ -47,19 +47,9 @@ You will see, in order:
 
 The full chain exercised by every demo:
 
-```
-Agent
-  → Birkin Identity (signed passport)
-  → Declared Intent (preferred)
-  → Policy Engine
-  → Capability / risk check
-  → Tool / action attempt
-  → Authorization Receipt (signed)
-  → Action (or deny / require_approval)
-  → Signed Audit Event
-  → Merkle Checkpoint
-  → birkin verify  →  VERDICT: AUTHENTIC
-```
+<p align="center">
+  <img src="assets/architecture.svg" alt="Birkin System Architecture" width="100%" />
+</p>
 
 ### Three attacks that are blocked + recorded + verifiable
 
