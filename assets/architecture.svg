@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .box { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 8px; }
+      .box-accent { fill: #161b22; stroke: #388bfd; stroke-width: 1.5; rx: 8px; }
+      .box-green { fill: #161b22; stroke: #238636; stroke-width: 1.5; rx: 8px; }
+      .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; fill: #58a6ff; }
+      .text-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; fill: #8b949e; }
+      .text-code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 11px; fill: #c9d1d9; }
+      .text-green { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 600; fill: #3fb950; }
+      .text-red { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 600; fill: #f85149; }
+      .arrow { stroke: #58a6ff; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+      @media (prefers-color-scheme: light) {
+        .bg { fill: #ffffff; }
+        .box { fill: #f6f8fa; stroke: #d0d7de; }
+        .box-accent { fill: #f6f8fa; stroke: #0969da; }
+        .box-green { fill: #f6f8fa; stroke: #1a7f37; }
+        .text-title { fill: #0969da; }
+        .text-body { fill: #57606a; }
+        .text-code { fill: #24292f; }
+        .text-green { fill: #1a7f37; }
+        .text-red { fill: #cf222e; }
+        .arrow { stroke: #0969da; }
+      }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#388bfd" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" rx="10" />
+
+  <!-- 1. Agent Action Request -->
+  <g transform="translate(25, 40)">
+    <rect width="170" height="240" class="box-accent" />
+    <text x="14" y="32" class="text-title">1. Action Request</text>
+    <text x="14" y="58" class="text-code">Agent Passport</text>
+    <text x="14" y="90" class="text-body">• Agent ID + Keypair</text>
+    <text x="14" y="112" class="text-body">• Declared Intent Text</text>
+    <text x="14" y="134" class="text-body">• Tool Name (e.g. fs.write)</text>
+    <text x="14" y="156" class="text-body">• Target Path / Command</text>
+    <text x="14" y="178" class="text-body">• Arguments SHA-256</text>
+    <text x="14" y="200" class="text-body">• Session Identifier</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <line x1="195" y1="160" x2="230" y2="160" class="arrow" />
+
+  <!-- 2. Policy Engine -->
+  <g transform="translate(235, 40)">
+    <rect width="200" height="240" class="box" />
+    <text x="14" y="32" class="text-title">2. Policy Engine</text>
+    <text x="14" y="58" class="text-code">Fail-Closed Rules</text>
+    <text x="14" y="90" class="text-body">• Normalized Path Traversal</text>
+    <text x="14" y="112" class="text-body">• Shell Command Denial</text>
+    <text x="14" y="134" class="text-body">• Hostname Validation</text>
+    <text x="14" y="156" class="text-body">• Risk Score [0 - 100]</text>
+    <text x="14" y="180" class="text-red">✗ deny (blocked)</text>
+    <text x="14" y="198" class="text-body">⚠ require_approval (HITL)</text>
+    <text x="14" y="216" class="text-green">✓ allow (authorized)</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <line x1="435" y1="160" x2="470" y2="160" class="arrow" />
+
+  <!-- 3. Cryptographic Signing -->
+  <g transform="translate(475, 40)">
+    <rect width="195" height="240" class="box" />
+    <text x="14" y="32" class="text-title">3. Ed25519 Signing</text>
+    <text x="14" y="58" class="text-code">AuthorizationReceipt</text>
+    <text x="14" y="90" class="text-body">• 12 Bound Fields</text>
+    <text x="14" y="112" class="text-body">• Agent &amp; Session Binding</text>
+    <text x="14" y="134" class="text-body">• Policy Version &amp; Rule ID</text>
+    <text x="14" y="156" class="text-body">• Prior Event Hash Link</text>
+    <text x="14" y="178" class="text-body">• Execution Refusal Gate</text>
+    <text x="14" y="200" class="text-body">• Programmatic HITL Seam</text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <line x1="670" y1="160" x2="705" y2="160" class="arrow" />
+
+  <!-- 4. Evidence & Verification -->
+  <g transform="translate(710, 40)">
+    <rect width="185" height="240" class="box-green" />
+    <text x="14" y="32" class="text-title">4. Evidence &amp; Verification</text>
+    <text x="14" y="58" class="text-code">run.json Package</text>
+    <text x="14" y="90" class="text-body">• SHA-256 Hash Chained</text>
+    <text x="14" y="112" class="text-body">• Merkle Root Checkpoint</text>
+    <text x="14" y="134" class="text-body">• 9 Offline Checks</text>
+    <text x="14" y="156" class="text-green">VERDICT: AUTHENTIC</text>
+    <text x="14" y="178" class="text-red">VERDICT: TAMPERED</text>
+    <text x="14" y="206" class="text-code">birkin verify &lt;pkg&gt;</text>
+  </g>
+</svg>
