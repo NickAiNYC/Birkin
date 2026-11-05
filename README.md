@@ -3,7 +3,7 @@
 > The open **Agent Authorization & Evidence Layer**.
 > Runtime-agnostic control plane for autonomous agents: signed authorization receipts, a verifiable audit ledger with Merkle checkpoints, and offline verification of exported run packages.
 
-Birkin is the *enforcement and cryptographic evidence plane* that sits between autonomous agents and the systems they can affect. An agent under Birkin governance cannot side-effect the world without producing a signed, verifiable receipt for what it did, why it was allowed (or denied), and under which policy.
+Birkin is the *enforcement and cryptographic evidence plane* that sits between autonomous agents and the systems they can affect. For actions routed through Birkin-governed integrations, an agent cannot invoke a capability without producing a signed, verifiable receipt for what it attempted, why it was allowed (or denied), and under which policy. (Birkin enforces policy at the adapter and tool-dispatch seam; it complements rather than replaces OS-level kernel sandboxing or container boundaries.)
 
 ---
 
