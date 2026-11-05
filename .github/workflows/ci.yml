@@ -33,3 +33,22 @@ jobs:
         # If this script exits non-zero, the release is red. No exceptions.
         # See scripts/ci_smoke.sh for what each of the 7 gates checks.
         run: bash scripts/ci_smoke.sh
+
+  demo-smoke:
+    name: Demo Script Reproducible Smoke Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Execute ./demo.sh in clean environment
+        run: |
+          chmod +x demo.sh
+          ./demo.sh
