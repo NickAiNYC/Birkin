@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "birkin"
-version = "0.1.0"
+version = "0.2.0"
 description = "Birkin — the open Agent Authorization & Evidence Layer. Runtime-agnostic control plane for autonomous agents: signed receipts, verifiable audit ledger, offline verification."
 readme = "README.md"
 requires-python = ">=3.10"
