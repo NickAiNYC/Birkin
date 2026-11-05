@@ -37,7 +37,7 @@ This repository ships that closed surface: working code, signed receipts, three 
 git clone https://github.com/nickainyc/birkin.git
 cd birkin
 pip install -e .
-python3 scripts/demo_all.py
+./demo.sh
 ```
 
 You will see, in order:
