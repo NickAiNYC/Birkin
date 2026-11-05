@@ -26,6 +26,7 @@ from .policy import PolicySpec, load_default_policy, DEFAULT_POLICY_PATH
 from .adapter import AgentAdapter, BaseAdapter, Intent, ActionRequest, ActionResult
 from .adapters.hermes import HermesAdapter
 from .adapters.null_agent import NullAgentAdapter
+from .adapters.grok_bot import GrokBotAdapter
 from .audit import AuditLedger, GENESIS_HASH
 from .engine import Engine
 from .verify import (
@@ -63,6 +64,7 @@ __all__ = [
     "ActionResult",
     "HermesAdapter",
     "NullAgentAdapter",
+    "GrokBotAdapter",
     "AuditLedger",
     "GENESIS_HASH",
     "Engine",
