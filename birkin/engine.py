@@ -64,6 +64,7 @@ class Engine:
     _intent: Optional[Intent] = None
     _checkpoints: list[MerkleCheckpoint] = field(default_factory=list, init=False)
     _run_id: str = field(default_factory=lambda: str(uuid.uuid4()), init=False)
+    _resolved_receipt_ids: set[str] = field(default_factory=set, init=False)
 
     def __post_init__(self) -> None:
         self.ledger = AuditLedger(self.birkin_signing_key)
@@ -256,6 +257,21 @@ class Engine:
             raise ValueError(
                 f"cannot approve receipt with decision={receipt.decision}"
             )
+        if receipt.receipt_id in self._resolved_receipt_ids:
+            raise ValueError(
+                f"cannot approve receipt {receipt.receipt_id}: already resolved"
+            )
+        if receipt.agent_id != identity.agent_id or receipt.session_id != identity.session_id:
+            raise ValueError(
+                f"identity mismatch: receipt {receipt.receipt_id} belongs to agent {receipt.agent_id} "
+                f"(session {receipt.session_id}), not {identity.agent_id} (session {identity.session_id})"
+            )
+        if not receipt.verify(self.birkin_signing_key.public_b64):
+            raise ValueError(
+                f"cannot approve receipt {receipt.receipt_id}: invalid or unverified cryptographic signature"
+            )
+
+        self._resolved_receipt_ids.add(receipt.receipt_id)
         self.ledger.append(
             type="alert",
             actor=identity.agent_id,
@@ -304,6 +320,21 @@ class Engine:
             raise ValueError(
                 f"cannot reject receipt with decision={receipt.decision}"
             )
+        if receipt.receipt_id in self._resolved_receipt_ids:
+            raise ValueError(
+                f"cannot reject receipt {receipt.receipt_id}: already resolved"
+            )
+        if receipt.agent_id != identity.agent_id or receipt.session_id != identity.session_id:
+            raise ValueError(
+                f"identity mismatch: receipt {receipt.receipt_id} belongs to agent {receipt.agent_id} "
+                f"(session {receipt.session_id}), not {identity.agent_id} (session {identity.session_id})"
+            )
+        if not receipt.verify(self.birkin_signing_key.public_b64):
+            raise ValueError(
+                f"cannot reject receipt {receipt.receipt_id}: invalid or unverified cryptographic signature"
+            )
+
+        self._resolved_receipt_ids.add(receipt.receipt_id)
         self.ledger.append(
             type="alert",
             actor=identity.agent_id,
@@ -351,6 +382,45 @@ class Engine:
                 payload={
                     "alert": "execution.refused",
                     "reason": f"receipt.decision={receipt.decision}",
+                },
+            )
+            return None, ev
+
+        if receipt.agent_id != identity.agent_id or receipt.session_id != identity.session_id:
+            ev = self.ledger.append(
+                type="alert",
+                actor=identity.agent_id,
+                session_id=identity.session_id,
+                receipt_id=receipt.receipt_id,
+                payload={
+                    "alert": "execution.refused",
+                    "reason": "identity_mismatch",
+                },
+            )
+            return None, ev
+
+        if not receipt.verify(self.birkin_signing_key.public_b64):
+            ev = self.ledger.append(
+                type="alert",
+                actor=identity.agent_id,
+                session_id=identity.session_id,
+                receipt_id=receipt.receipt_id,
+                payload={
+                    "alert": "execution.refused",
+                    "reason": "invalid_receipt_signature",
+                },
+            )
+            return None, ev
+
+        if self._args_hash(request) != receipt.args_hash:
+            ev = self.ledger.append(
+                type="alert",
+                actor=identity.agent_id,
+                session_id=identity.session_id,
+                receipt_id=receipt.receipt_id,
+                payload={
+                    "alert": "execution.refused",
+                    "reason": "args_hash_mismatch",
                 },
             )
             return None, ev

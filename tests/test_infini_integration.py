@@ -50,3 +50,4 @@ def test_infini_gateway_denies_unauthorized_shell_step():
     # Verify denial event was sealed into ledger
     events = [e for e in package.events if e.type == "tool.deny"]
     assert len(events) == 1
+
