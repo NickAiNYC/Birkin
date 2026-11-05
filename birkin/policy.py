@@ -101,9 +101,16 @@ class PolicySpec:
     ) -> PolicyDecision:
         args = args or {}
         for rule in self.rules:
-            if _match_rule(rule.get("match", {}), tool=tool, args=args, runtime=runtime):
+            rule_decision = rule.get("decision", "deny")
+            if _match_rule(
+                rule.get("match", {}),
+                tool=tool,
+                args=args,
+                runtime=runtime,
+                decision=rule_decision,
+            ):
                 return PolicyDecision(
-                    decision=rule.get("decision", "deny"),
+                    decision=rule_decision,
                     policy=self.ref,
                     rule=rule.get("id", "unnamed"),
                     risk_score=int(rule.get("risk_score", 100)),
@@ -122,12 +129,73 @@ class PolicySpec:
 # --------------------------------------------------------------------------- #
 # Matching primitives
 # --------------------------------------------------------------------------- #
+def _is_path_contained(
+    candidate_path: Any,
+    prefix_path: Any,
+    *,
+    decision_mode: str = "allow",
+) -> bool:
+    """Component-aware, symlink-aware filesystem containment check.
+
+    Security Guarantees:
+    - Path-component awareness: Prevents sibling-prefix collisions (e.g. /tmp/birkin-unsafe matching /tmp/birkin)
+      by enforcing strict path-part ancestor relationships via Path.is_relative_to().
+    - Domain boundary enforcement: Absolute policy prefixes require absolute candidate paths.
+      Unanchored relative paths fail-closed against absolute security boundaries.
+    - Canonical resolution: Evaluates both lexical boundaries (normalizing '..') and canonical
+      filesystem targets via resolve() to neutralize symlink traversal escapes (e.g. /tmp/birkin/link_to_etc).
+    - Mode-aware containment semantics:
+      * For 'allow' decisions: requires BOTH lexical AND resolved targets to reside within the boundary.
+      * For 'deny' (or 'require_approval') decisions: triggers if EITHER lexical OR resolved targets enter the restricted boundary.
+    - Fails closed on null bytes, malformed paths, symlink cycles (RuntimeError), or resolution errors.
+
+    Filesystem Race-Condition (TOCTOU) Limitations:
+    Policy evaluation inspects path containment at check time. If symlinks or directory mounts
+    are swapped concurrently by an untrusted actor between authorization and runtime access,
+    a TOCTOU race can occur. Full mitigation requires atomic openat2(..., RESOLVE_BENEATH) or
+    operating system namespace sandboxing at the execution runtime layer.
+    """
+    if not isinstance(candidate_path, str) or not isinstance(prefix_path, str):
+        return False
+    if not candidate_path.strip() or not prefix_path.strip():
+        return False
+    if "\x00" in candidate_path or "\x00" in prefix_path:
+        return False
+
+    try:
+        cand_p = Path(candidate_path)
+        pref_p = Path(prefix_path)
+
+        # Domain boundary check: absolute prefix requires absolute candidate
+        if pref_p.is_absolute() and not cand_p.is_absolute():
+            return False
+        if not pref_p.is_absolute() and cand_p.is_absolute():
+            return False
+
+        # Lexical component containment (catches sibling prefixes and raw .. escapes)
+        norm_cand = Path(os.path.normpath(candidate_path))
+        norm_pref = Path(os.path.normpath(prefix_path))
+        lexical_match = norm_cand.is_relative_to(norm_pref)
+
+        # Canonical resolved containment (resolves existing symlinks and normalizes paths)
+        resolved_cand = cand_p.resolve()
+        resolved_pref = pref_p.resolve()
+        resolved_match = resolved_cand.is_relative_to(resolved_pref)
+
+        if decision_mode == "allow":
+            return lexical_match and resolved_match
+        return lexical_match or resolved_match
+    except (ValueError, TypeError, OSError, RuntimeError):
+        return False
+
+
 def _match_rule(
     match: dict[str, Any],
     *,
     tool: str,
     args: dict[str, Any],
     runtime: str | None,
+    decision: str = "allow",
 ) -> bool:
     if not match:
         return True  # empty match = always matches (used for default rules)
@@ -164,9 +232,7 @@ def _match_rule(
         raw_path = args.get("path")
         if not isinstance(raw_path, str):
             return False
-        # Prevent path traversal attacks (e.g. /tmp/birkin/../../etc/shadow)
-        norm_path = os.path.normpath(raw_path)
-        if not any(norm_path.startswith(os.path.normpath(p)) for p in path_prefix):
+        if not any(_is_path_contained(raw_path, p, decision_mode=decision) for p in path_prefix):
             return False
 
     host_in = match.get("host_in")
@@ -184,8 +250,9 @@ def _match_rule(
     path_not_prefix = match.get("path_not_prefix")
     if path_not_prefix is not None:
         raw_path = args.get("path", "")
-        norm_path = os.path.normpath(raw_path) if isinstance(raw_path, str) else ""
-        if any(norm_path.startswith(os.path.normpath(p)) for p in path_not_prefix):
+        if not isinstance(raw_path, str):
+            return False
+        if any(_is_path_contained(raw_path, p, decision_mode="deny") for p in path_not_prefix):
             return False
 
     return True

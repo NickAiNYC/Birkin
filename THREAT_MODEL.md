@@ -66,6 +66,39 @@ python3 scripts/verify-chain.py --db ~/.hermes/audit.db   # verify live chain
 
 ---
 
+## Policy Engine Threat Model (Filesystem, Network, & HITL Lifecycle)
+
+Birkin's policy engine (`birkin/policy.py`) evaluates tool invocations against structured rules prior to execution. The threat model defines defenses against common bypass techniques:
+
+### 1. Filesystem Containment & Traversal Defense
+
+| Attack Vector | Vulnerability Description | Birkin Mitigation |
+| :--- | :--- | :--- |
+| **Sibling-Prefix Collision** | Naive `norm_path.startswith(prefix)` matches `/tmp/birkin-unsafe` against allowed `/tmp/birkin`. | Component-aware containment via `Path.is_relative_to()` enforces strict ancestor tree membership. |
+| **Directory Traversal** | Payload `/tmp/birkin/../../etc/shadow` escapes sandbox via relative dot-dot segments. | Normalized and canonical path resolution collapses segments before checking boundary ancestry. |
+| **Symlink Escapes** | An attacker creates a symlink `/tmp/birkin/link_sys` pointing to `/etc`. | Both lexical paths AND canonical targets (`Path.resolve(strict=False)`) are evaluated. For `allow` rules, both lexical and resolved paths must stay within the boundary. For `deny` rules, triggering either lexical or resolved targets blocks execution. |
+| **Relative / Unanchored Paths** | Candidate path `"relative/file.txt"` submitted against absolute sandbox `/tmp/birkin/`. | Absolute prefixes strictly reject relative candidates, preventing ambient `cwd` alias matching. Fails closed. |
+| **Malformed Paths & Loops** | Embedded null bytes (`\x00`), empty paths, or circular symlinks (`a -> b -> a`). | Exception handling catches `ValueError`, `OSError`, `RuntimeError`, immediately failing closed to default deny. |
+
+### 2. Time-of-Check to Time-of-Use (TOCTOU) Limitations
+
+Policy evaluation verifies path containment at authorization time. If local directory contents or symlinks are swapped concurrently by an untrusted actor between authorization and syscall execution, a TOCTOU race can occur.
+
+**Remediation & Defense-in-Depth:**
+- Full mitigation against hostile local users requires OS-level primitives like `openat2(..., RESOLVE_BENEATH)` or Linux mount namespaces / cgroups at the execution runtime layer.
+- Birkin guarantees that authorization receipts are cryptographically bound to the checked arguments (`args_hash`), and execution is refused if arguments or identity are tampered.
+
+### 3. Human-in-the-Loop (HITL) State Machine Integrity
+
+Actions requiring human approval (`require_approval`) produce an signed intermediate receipt:
+
+- **Identity & Session Binding:** `engine.approve()` and `engine.reject()` verify that `receipt.agent_id` and `receipt.session_id` match the requesting caller. An approval or rejection cannot be hijacked by another agent or session.
+- **Cryptographic Signature Validation:** The engine verifies its own control-plane signature before allowing any state transition on a receipt.
+- **Non-Reusable State Transitions:** Once a receipt is approved or rejected, its `receipt_id` is permanently marked resolved. Attempting duplicate approvals, duplicate rejections, or cross-transitioning (approve after reject) raises an immediate `ValueError`.
+- **Argument Integrity at Execution:** `engine.execute()` verifies that `sha256(canonical_json(request.args))` matches `receipt.args_hash`. Presenting an approved receipt with modified tool arguments triggers an immediate `execution.refused` alert.
+
+---
+
 ## Known Limitations
 
 **Single-machine trust boundary.** The audit log and the agent run on the same host. An attacker who owns the host owns both. Birkin is appropriate for personal agents and teams where you trust the infrastructure operators; it is not a substitute for a tamper-evident log backed by an independent write endpoint or a distributed ledger.
