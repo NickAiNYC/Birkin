@@ -52,18 +52,18 @@ def main() -> None:
 
     intent = adapter.declare_intent(
         identity,
-        text="Search the web and read a file under /tmp, then stop.",
+        text="Read a status file under the sandbox, then stop.",
     )
     engine.declare_intent(identity, intent)
 
-    # Allowed tool
+    # Allowed tool (fs.read is allowed by default policy)
     req1 = adapter.build_action_request(
-        tool="web_search",
-        args={"query": "Birkin agent authorization"},
-        justification="research the project",
+        tool="fs.read",
+        args={"path": "/tmp/birkin/status.txt"},
+        justification="read status",
     )
     rec1 = engine.attempt_action(identity, req1)
-    print(f"web_search → {rec1.decision} ({rec1.rule})")
+    print(f"fs.read    → {rec1.decision} ({rec1.rule})")
     if rec1.decision == "allow":
         adapter.execute(identity, req1, rec1)
 
