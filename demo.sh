@@ -13,22 +13,26 @@ echo "  Agent Authorization & Cryptographic Evidence Layer"
 echo "============================================================"
 echo ""
 
-# 1. Environment & Python discovery (guarantees local repository execution, no global collision)
+# Helper to validate that a specific python binary meets the minimum version requirement (>= 3.10)
+check_python_version() {
+  local py="$1"
+  "$py" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null
+}
+
+# 1. Environment & Python discovery (guarantees local repository execution and validates interpreter version)
 PYTHON_EXEC=""
-if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "${VIRTUAL_ENV}/bin/python" ]; then
+if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "${VIRTUAL_ENV}/bin/python" ] && check_python_version "${VIRTUAL_ENV}/bin/python"; then
   PYTHON_EXEC="${VIRTUAL_ENV}/bin/python"
-elif [ -d ".venv" ] && [ -x ".venv/bin/python" ]; then
+elif [ -d ".venv" ] && [ -x ".venv/bin/python" ] && check_python_version ".venv/bin/python"; then
   PYTHON_EXEC=".venv/bin/python"
-elif [ -d "venv" ] && [ -x "venv/bin/python" ]; then
+elif [ -d "venv" ] && [ -x "venv/bin/python" ] && check_python_version "venv/bin/python"; then
   PYTHON_EXEC="venv/bin/python"
 else
   # Discover compatible Python runtime (>= 3.10)
   for candidate in python3.12 python3.11 python3.10 python3; do
-    if command -v "$candidate" >/dev/null 2>&1; then
-      if "$candidate" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
-        PYTHON_EXEC="$candidate"
-        break
-      fi
+    if command -v "$candidate" >/dev/null 2>&1 && check_python_version "$candidate"; then
+      PYTHON_EXEC="$candidate"
+      break
     fi
   done
 
@@ -57,6 +61,7 @@ trap 'rm -rf "${DEMO_DIR}"' EXIT
 
 DEMO_OUT="${DEMO_DIR}/run_package.json"
 ATTACK1_OUT="${DEMO_DIR}/attack1_package.json"
+ATTACK2_OUT="${DEMO_DIR}/attack2_package.json"
 ATTACK3_CLEAN="${DEMO_DIR}/attack3_clean.json"
 ATTACK3_TAMPERED="${DEMO_DIR}/run_package_tampered.json"
 
@@ -76,20 +81,24 @@ echo "3. Simulating Attack 1: Smuggled prompt injection trying to execute shell.
 run_birkin attack 1 --out "$ATTACK1_OUT"
 echo ""
 
-echo "4. Simulating Attack 3: Skill/policy ledger tampering..."
+echo "4. Simulating Attack 2: Unauthorized & privilege-escalating tool use..."
+run_birkin attack 2 --out "$ATTACK2_OUT"
+echo ""
+
+echo "5. Simulating Attack 3: Skill/policy ledger tampering..."
 run_birkin attack 3 --out "$ATTACK3_CLEAN"
 echo ""
 
-echo "5. Asserting cryptographic verification outcomes..."
+echo "6. Asserting cryptographic verification outcomes..."
 
-# 5A. Assert authentic run verdict
+# 6A. Assert authentic run verdict
 CLEAN_VERDICT="$(run_birkin verify "$DEMO_OUT" -q)"
 if [ "$CLEAN_VERDICT" != "AUTHENTIC" ]; then
   echo "ERROR: Authentic run package did not produce AUTHENTIC verdict: $CLEAN_VERDICT" >&2
   exit 1
 fi
 
-# 5B. Assert Attack 1 denial receipt presence
+# 6B. Assert Attack 1 denial receipt presence
 "$PYTHON_EXEC" - <<EOF
 import json, sys
 with open("$ATTACK1_OUT") as f:
@@ -101,7 +110,20 @@ if not deny_receipts:
     sys.exit(1)
 EOF
 
-# 5C. Assert Attack 3 tampering detection (clean is AUTHENTIC, tampered is TAMPERED)
+# 6C. Assert Attack 2 policy gate decisions (deny, require_approval, allow)
+"$PYTHON_EXEC" - <<EOF
+import json, sys
+with open("$ATTACK2_OUT") as f:
+    pkg = json.load(f)
+receipts = pkg.get("receipts", [])
+decisions = {r.get("decision") for r in receipts}
+expected = {"deny", "require_approval", "allow"}
+if not expected.issubset(decisions):
+    print(f"ERROR: Attack 2 did not record expected decisions {expected}, found {decisions}", file=sys.stderr)
+    sys.exit(1)
+EOF
+
+# 6D. Assert Attack 3 tampering detection (clean is AUTHENTIC, tampered is TAMPERED)
 if [ ! -s "$ATTACK3_TAMPERED" ]; then
   echo "ERROR: Expected tampered package was not generated: $ATTACK3_TAMPERED" >&2
   exit 1
@@ -126,6 +148,7 @@ fi
 
 echo "   ✓ Authentic run verified: offline 9-point verification = AUTHENTIC."
 echo "   ✓ Prompt injection blocked: shell.exec.deny receipt recorded and cryptographically sealed."
+echo "   ✓ Privilege escalation gated: policy enforced deny, require_approval, and allow."
 echo "   ✓ Tampering detected: ledger mutation flipped offline verdict to TAMPERED (exit code $TAMPERED_EXIT_CODE)."
 echo ""
 
